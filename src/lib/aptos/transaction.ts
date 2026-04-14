@@ -6,7 +6,6 @@ import {
   MultiEd25519Signature,
   Serializer,
   Deserializer,
-  RawTransaction,
   SimpleTransaction,
   generateSigningMessageForTransaction,
 } from "@aptos-labs/ts-sdk";
@@ -59,7 +58,7 @@ export async function buildTransaction(
       gasUnitPrice,
       expireTimestamp: Math.floor(Date.now() / 1000) + expirationSeconds,
     },
-    withFeePayer: config.feePayerAddress ? true : undefined,
+    ...(config.feePayerAddress ? { withFeePayer: true } : {}),
   });
 
   const rawTxn = transaction.rawTransaction;
@@ -85,6 +84,9 @@ export function deserializeSimpleTransaction(hex: string): SimpleTransaction {
   const deserializer = new Deserializer(bytes);
   return SimpleTransaction.deserialize(deserializer);
 }
+
+/** Alias for spec compatibility */
+export const deserializeRawTransaction = deserializeSimpleTransaction;
 
 export async function submitMultisigTransaction(params: {
   rawTransactionBytes: string;
