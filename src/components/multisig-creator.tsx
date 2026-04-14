@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useWallet } from "@/components/wallet-provider";
+import { ConnectWalletButton } from "@/components/connect-wallet-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -128,11 +129,13 @@ export function MultisigCreator() {
       </CardHeader>
       <CardContent className="space-y-6">
         {!connected && (
-          <Alert>
-            <AlertDescription>
-              Please connect your wallet to create a multisig.
-            </AlertDescription>
-          </Alert>
+          <div className="flex flex-col items-center gap-4 py-8 text-center">
+            <p className="text-muted-foreground">
+              Connect your Petra wallet to create a multisig. Your wallet will be
+              added as the first signer.
+            </p>
+            <ConnectWalletButton />
+          </div>
         )}
 
         {connected && publicKey && (
