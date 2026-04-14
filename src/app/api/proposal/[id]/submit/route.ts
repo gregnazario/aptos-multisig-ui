@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { deriveMultisigAddress, combineSignatures } from "@/lib/aptos/multisig";
 import { submitMultisigTransaction } from "@/lib/aptos/transaction";
 import type { AptosNetwork } from "@/lib/aptos/client";
+import { getGasStationConfig, signAsFeePayer } from "@/lib/gas-station";
 
 export async function POST(
   _request: NextRequest,
@@ -41,6 +42,32 @@ export async function POST(
       { error: "Associated multisig not found" },
       { status: 404 }
     );
+  }
+
+  // 2b. Auto-sponsor: if proposal has a feePayerAddress but no feePayerSignature,
+  // and the gas station is enabled and its address matches, auto-sign as fee payer.
+  if (proposal.feePayerAddress && !proposal.feePayerSignature) {
+    const gasConfig = getGasStationConfig();
+    if (
+      gasConfig.enabled &&
+      gasConfig.address?.toLowerCase() ===
+        proposal.feePayerAddress.toLowerCase() &&
+      gasConfig.networks.includes(multisig.network as AptosNetwork)
+    ) {
+      try {
+        const feePayerSignature = signAsFeePayer(
+          proposal.rawTransactionBytes
+        );
+        await db
+          .update(proposals)
+          .set({ feePayerSignature, updatedAt: new Date() })
+          .where(eq(proposals.id, id));
+        // Update local reference so it's available downstream if needed
+        proposal.feePayerSignature = feePayerSignature;
+      } catch {
+        // Auto-sponsor failed; continue without it — manual sponsoring is still possible
+      }
+    }
   }
 
   // 3. Fetch all signer responses that are "signed"
