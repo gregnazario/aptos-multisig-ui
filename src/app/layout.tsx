@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { WalletProvider } from "@/components/wallet-provider";
 import { ConnectWalletButton } from "@/components/connect-wallet-button";
+import { NetworkSwitcher } from "@/components/network-switcher";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -33,7 +34,10 @@ export default function RootLayout({
         <WalletProvider>
           <header className="flex items-center justify-between border-b px-4 py-3">
             <h1 className="text-lg font-semibold">Aptos Multisig</h1>
-            <ConnectWalletButton />
+            <div className="flex items-center gap-2">
+              <NetworkSwitcher />
+              <ConnectWalletButton />
+            </div>
           </header>
           <main className="p-4">{children}</main>
         </WalletProvider>
