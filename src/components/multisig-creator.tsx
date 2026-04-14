@@ -18,7 +18,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 const PUBLIC_KEY_REGEX = /^0x[0-9a-fA-F]{64}$/;
 
 export function MultisigCreator() {
-  const { connected, publicKey, network } = useWallet();
+  const { connected, address, publicKey, network } = useWallet();
   const router = useRouter();
 
   const [additionalKeys, setAdditionalKeys] = useState<string[]>([""]);
@@ -143,7 +143,16 @@ export function MultisigCreator() {
             {/* Signer #0 - connected wallet */}
             <div className="space-y-2">
               <Label>Signer #0 (your wallet)</Label>
+              {address && (
+                <p className="text-xs text-muted-foreground">
+                  Address: <code>{address}</code>
+                </p>
+              )}
               <Input value={publicKey} disabled className="font-mono text-xs" />
+              <p className="text-xs text-muted-foreground">
+                This is your Ed25519 public key, which differs from your account address.
+                Multisig accounts are derived from public keys.
+              </p>
             </div>
 
             {/* Additional signers */}
