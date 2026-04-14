@@ -43,6 +43,9 @@ export interface SignatureWithIndex {
 export function combineSignatures(
   signatures: SignatureWithIndex[]
 ): MultiEd25519Signature {
+  if (signatures.length === 0) {
+    throw new Error("At least one signature is required");
+  }
   const sorted = [...signatures].sort((a, b) => a.signerIndex - b.signerIndex);
   const ed25519Sigs = sorted.map((s) => new Ed25519Signature(s.signature));
   const bitmap = MultiEd25519Signature.createBitmap({
