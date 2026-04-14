@@ -1,119 +1,92 @@
 "use client";
 
 import {
+  AptosWalletAdapterProvider,
+  useWallet as useAdapterWallet,
+} from "@aptos-labs/wallet-adapter-react";
+import { Network } from "@aptos-labs/ts-sdk";
+import {
   createContext,
-  useCallback,
   useContext,
-  useEffect,
-  useRef,
   useState,
+  useCallback,
+  useRef,
 } from "react";
 import type { AptosNetwork } from "@/lib/aptos/client";
-import { getPetraWallet, isPetraInstalled } from "@/lib/wallet/petra";
 
-interface WalletContextValue {
+const networkToEnum: Record<AptosNetwork, Network> = {
+  mainnet: Network.MAINNET,
+  testnet: Network.TESTNET,
+  devnet: Network.DEVNET,
+};
+
+interface MultisigWalletContextValue {
   connected: boolean;
   address: string | null;
   publicKey: string | null;
-  network: AptosNetwork | null;
+  network: AptosNetwork;
+  switchNetwork: (network: AptosNetwork) => void;
   sessionToken: string | null;
-  isPetraInstalled: boolean;
-  connect: () => Promise<void>;
-  disconnect: () => Promise<void>;
   verifyIdentity: () => Promise<string>;
 }
 
-const WalletContext = createContext<WalletContextValue | null>(null);
+const MultisigWalletContext =
+  createContext<MultisigWalletContextValue | null>(null);
 
-export function WalletProvider({ children }: { children: React.ReactNode }) {
-  const [connected, setConnected] = useState(false);
-  const [address, setAddress] = useState<string | null>(null);
-  const [publicKey, setPublicKey] = useState<string | null>(null);
-  const [network, setNetwork] = useState<AptosNetwork | null>(null);
+function MultisigWalletInner({
+  children,
+  initialNetwork,
+}: {
+  children: React.ReactNode;
+  initialNetwork: AptosNetwork;
+}) {
+  const adapter = useAdapterWallet();
+  const [selectedNetwork, setSelectedNetwork] =
+    useState<AptosNetwork>(initialNetwork);
   const [sessionToken, setSessionToken] = useState<string | null>(null);
-  const [petraInstalled, setPetraInstalled] = useState(false);
   const tokenRef = useRef<string | null>(null);
 
-  useEffect(() => {
-    setPetraInstalled(isPetraInstalled());
-  }, []);
+  const address = adapter.account?.address?.toString() ?? null;
+  const publicKey = adapter.account?.publicKey?.toString() ?? null;
 
-  useEffect(() => {
-    const wallet = getPetraWallet();
-    if (!wallet) return;
-
-    wallet.onAccountChange((account) => {
-      if (account.address) {
-        setAddress(account.address);
-        setPublicKey(account.publicKey);
-      } else {
-        setConnected(false);
-        setAddress(null);
-        setPublicKey(null);
-      }
+  const switchNetwork = useCallback(
+    (net: AptosNetwork) => {
+      setSelectedNetwork(net);
       setSessionToken(null);
       tokenRef.current = null;
-    });
-
-    wallet.onNetworkChange((net) => {
-      setNetwork(net.name.toLowerCase() as AptosNetwork);
-      setSessionToken(null);
-      tokenRef.current = null;
-    });
-  }, []);
-
-  const connect = useCallback(async () => {
-    const wallet = getPetraWallet();
-    if (!wallet) throw new Error("Petra wallet not installed");
-
-    const account = await wallet.connect();
-    const net = await wallet.network();
-
-    setConnected(true);
-    setAddress(account.address);
-    setPublicKey(account.publicKey);
-    setNetwork(net.name.toLowerCase() as AptosNetwork);
-  }, []);
-
-  const disconnect = useCallback(async () => {
-    const wallet = getPetraWallet();
-    if (wallet) await wallet.disconnect();
-
-    setConnected(false);
-    setAddress(null);
-    setPublicKey(null);
-    setNetwork(null);
-    setSessionToken(null);
-    tokenRef.current = null;
-  }, []);
+      adapter.changeNetwork(networkToEnum[net]).catch(() => {
+        // Not all wallets support programmatic network switching
+      });
+    },
+    [adapter],
+  );
 
   const verifyIdentity = useCallback(async (): Promise<string> => {
     if (tokenRef.current) return tokenRef.current;
-
-    const wallet = getPetraWallet();
-    if (!wallet || !publicKey || !address || !network) {
+    if (!adapter.connected || !address || !publicKey) {
       throw new Error("Wallet not connected");
     }
 
     const nonce = crypto.randomUUID();
-    const response = await wallet.signMessage({
+    const signResult = await adapter.signMessage({
       message: "Aptos Multisig Verification",
       nonce,
-      address: true,
-      application: true,
-      chainId: true,
     });
+
+    // signResult.signature is an SDK Signature object; convert to string
+    const signature = signResult.signature.toString();
+    const fullMessage = signResult.fullMessage;
 
     const res = await fetch("/api/verify", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         publicKey,
-        signature: response.signature,
-        fullMessage: response.fullMessage,
+        signature,
+        fullMessage,
         nonce,
         address,
-        network,
+        network: selectedNetwork,
       }),
     });
 
@@ -126,31 +99,46 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     setSessionToken(token);
     tokenRef.current = token;
     return token;
-  }, [publicKey, address, network]);
+  }, [adapter, address, publicKey, selectedNetwork]);
 
   return (
-    <WalletContext.Provider
+    <MultisigWalletContext.Provider
       value={{
-        connected,
+        connected: adapter.connected,
         address,
         publicKey,
-        network,
+        network: selectedNetwork,
+        switchNetwork,
         sessionToken,
-        isPetraInstalled: petraInstalled,
-        connect,
-        disconnect,
         verifyIdentity,
       }}
     >
       {children}
-    </WalletContext.Provider>
+    </MultisigWalletContext.Provider>
+  );
+}
+
+export function WalletProvider({ children }: { children: React.ReactNode }) {
+  const [network] = useState<AptosNetwork>("devnet");
+
+  return (
+    <AptosWalletAdapterProvider
+      autoConnect={true}
+      dappConfig={{ network: networkToEnum[network] }}
+      optInWallets={["Petra"]}
+      onError={(error) => console.error("Wallet adapter error:", error)}
+    >
+      <MultisigWalletInner initialNetwork={network}>
+        {children}
+      </MultisigWalletInner>
+    </AptosWalletAdapterProvider>
   );
 }
 
 export function useWallet() {
-  const context = useContext(WalletContext);
+  const context = useContext(MultisigWalletContext);
   if (!context) {
-    throw new Error("useWallet must be used within a WalletProvider");
+    throw new Error("useWallet must be used within WalletProvider");
   }
   return context;
 }

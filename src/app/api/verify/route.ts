@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Nonce already used" }, { status: 400 });
   }
 
-  if (!fullMessage.includes("Aptos Multisig Verification")) {
+  if (!fullMessage.includes("Multisig Verification")) {
     return NextResponse.json(
       { error: "Invalid message format" },
       { status: 400 }
