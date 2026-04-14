@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useWallet as useAdapterWallet } from "@aptos-labs/wallet-adapter-react";
 import { useWallet } from "@/components/wallet-provider";
-import { getPetraWallet } from "@/lib/wallet/petra";
 import { SignerStatusGrid } from "@/components/signer-status-grid";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -108,6 +108,7 @@ interface ProposalViewProps {
 }
 
 export function ProposalView({ proposalId }: ProposalViewProps) {
+  const adapter = useAdapterWallet();
   const {
     connected,
     publicKey,
@@ -193,10 +194,8 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
     setActionError(null);
     try {
       const token = await verifyIdentity();
-      const wallet = getPetraWallet();
-      if (!wallet) throw new Error("Petra wallet not found");
 
-      const signResult = await wallet.signMessage({
+      const signResult = await adapter.signMessage({
         message: proposal.rawTransactionBytes,
         nonce: proposalId,
       });
@@ -207,7 +206,7 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ signature: signResult.signature }),
+        body: JSON.stringify({ signature: signResult.signature.toString() }),
       });
 
       if (!res.ok) {

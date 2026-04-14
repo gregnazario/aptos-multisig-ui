@@ -1,45 +1,60 @@
 "use client";
 
+import { useWallet as useAdapterWallet } from "@aptos-labs/wallet-adapter-react";
 import { useWallet } from "@/components/wallet-provider";
-
-function truncateAddress(address: string): string {
-  return `${address.slice(0, 6)}...${address.slice(-4)}`;
-}
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export function ConnectWalletButton() {
-  const { connected, address, isPetraInstalled, connect, disconnect } =
-    useWallet();
+  const adapter = useAdapterWallet();
+  const { address } = useWallet();
 
-  if (!isPetraInstalled) {
+  if (adapter.connected && address) {
     return (
-      <a
-        href="https://petra.app"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-      >
-        Install Petra
+      <Button variant="outline" onClick={() => adapter.disconnect()}>
+        {address.slice(0, 6)}...{address.slice(-4)}
+      </Button>
+    );
+  }
+
+  const availableWallets = adapter.wallets ?? [];
+
+  if (availableWallets.length === 0) {
+    return (
+      <a href="https://petra.app" target="_blank" rel="noopener noreferrer">
+        <Button variant="outline">Install Petra</Button>
       </a>
     );
   }
 
-  if (connected && address) {
+  if (availableWallets.length === 1) {
     return (
-      <button
-        onClick={disconnect}
-        className="rounded-md bg-gray-200 px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
-      >
-        {truncateAddress(address)}
-      </button>
+      <Button onClick={() => adapter.connect(availableWallets[0].name)}>
+        Connect {availableWallets[0].name}
+      </Button>
     );
   }
 
   return (
-    <button
-      onClick={connect}
-      className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-    >
-      Connect Wallet
-    </button>
+    <DropdownMenu>
+      <DropdownMenuTrigger render={<Button />}>
+        Connect Wallet
+      </DropdownMenuTrigger>
+      <DropdownMenuContent>
+        {availableWallets.map((w) => (
+          <DropdownMenuItem
+            key={w.name}
+            onClick={() => adapter.connect(w.name)}
+          >
+            {w.name}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
