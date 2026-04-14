@@ -49,7 +49,8 @@ export async function buildTransaction(
   const transaction = await aptos.transaction.build.simple({
     sender: senderAddress,
     data: {
-      function: `${config.payload.module}::${config.payload.function}`,
+      function:
+        `${config.payload.module}::${config.payload.function}` as `${string}::${string}::${string}`,
       typeArguments: config.payload.typeArgs,
       functionArguments: config.payload.args,
     },
