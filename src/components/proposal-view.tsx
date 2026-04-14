@@ -123,6 +123,8 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
   const [showDeclineForm, setShowDeclineForm] = useState(false);
   const [declineReason, setDeclineReason] = useState("");
   const [actionError, setActionError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const fetchProposal = useCallback(async () => {
     try {
@@ -253,6 +255,34 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
       setDeclining(false);
     }
   }
+
+  async function handleSubmit() {
+    if (!proposal) return;
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      const res = await fetch(`/api/proposal/${proposalId}/submit`, {
+        method: "POST",
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error ?? "Failed to submit transaction");
+      }
+
+      await fetchProposal();
+    } catch (err) {
+      setSubmitError(
+        err instanceof Error ? err.message : "Submission failed"
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  const signedCount = proposal.responses.filter(
+    (r) => r.response === "signed"
+  ).length;
 
   const payload = proposal.payload;
   const expirationDate = new Date(
@@ -399,6 +429,27 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
                 </Button>
               </div>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Submit card */}
+      {proposal.status === "ready" && (
+        <Card className="border-green-500">
+          <CardHeader>
+            <CardTitle className="text-base">Submit Transaction</CardTitle>
+            <CardDescription>
+              Threshold reached ({signedCount}/{proposal.multisig.threshold}).
+              Ready to submit.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {submitError && (
+              <p className="text-sm text-destructive">{submitError}</p>
+            )}
+            <Button onClick={handleSubmit} disabled={submitting}>
+              {submitting ? "Submitting..." : "Submit Transaction"}
+            </Button>
           </CardContent>
         </Card>
       )}
