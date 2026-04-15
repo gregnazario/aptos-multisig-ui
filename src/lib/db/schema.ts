@@ -53,3 +53,32 @@ export const signerResponses = sqliteTable("signer_responses", {
     .notNull()
     .$defaultFn(() => new Date()),
 });
+
+export const multisigSetups = sqliteTable("multisig_setups", {
+  id: text("id").primaryKey(), // UUID, used in shareable link
+  addresses: text("addresses").notNull(), // JSON array of signer addresses
+  threshold: integer("threshold").notNull(),
+  network: text("network").notNull(),
+  label: text("label"),
+  createdBy: text("created_by").notNull(), // address of creator
+  status: text("status").notNull().default("pending"), // pending | complete
+  multisigId: text("multisig_id"), // FK set when complete, links to created multisig
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+});
+
+export const setupVerifications = sqliteTable("setup_verifications", {
+  id: text("id").primaryKey(), // UUID
+  setupId: text("setup_id")
+    .notNull()
+    .references(() => multisigSetups.id),
+  address: text("address").notNull(), // the signer address that was verified
+  publicKey: text("public_key").notNull(), // extracted Ed25519 public key
+  signature: text("signature").notNull(), // the verification signature (proof)
+  fullMessage: text("full_message").notNull(), // the full signed message
+  nonce: text("nonce").notNull(), // nonce used in the verification
+  verifiedAt: integer("verified_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+});
