@@ -8,6 +8,13 @@
       "when": 1776202664489,
       "tag": "0000_spooky_toxin",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1776207650534,
+      "tag": "0001_special_vermin",
+      "breakpoints": true
     }
   ]
 }

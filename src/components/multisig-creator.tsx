@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useCallback } from "react";
 import { useWallet } from "@/components/wallet-provider";
+import { useWallet as useAdapterWallet } from "@aptos-labs/wallet-adapter-react";
 import { ConnectWalletButton } from "@/components/connect-wallet-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,113 +14,200 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { CheckCircle2, Clock, Copy, ExternalLink } from "lucide-react";
 
-const PUBLIC_KEY_REGEX = /^0x[0-9a-fA-F]{64}$/;
+const ADDRESS_REGEX = /^0x[0-9a-fA-F]{64}$/;
+
+type Step = "configure" | "addresses" | "verify";
+
+interface SetupData {
+  id: string;
+  addresses: string[];
+  threshold: number;
+  network: string;
+  label: string | null;
+  createdBy: string;
+  status: string;
+  multisigId: string | null;
+  verifications: Array<{
+    address: string;
+    publicKey: string;
+    verifiedAt: string;
+  }>;
+}
 
 export function MultisigCreator() {
-  const { connected, address, publicKey, network } = useWallet();
-  const router = useRouter();
+  const { connected, address, network } = useWallet();
+  const adapter = useAdapterWallet();
 
-  const [additionalKeys, setAdditionalKeys] = useState<string[]>([""]);
-  const [threshold, setThreshold] = useState(1);
+  const [step, setStep] = useState<Step>("configure");
+  const [numSigners, setNumSigners] = useState(3);
+  const [threshold, setThreshold] = useState(2);
   const [label, setLabel] = useState("");
-  const [derivedAddress, setDerivedAddress] = useState<string | null>(null);
+  const [signerAddresses, setSignerAddresses] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [setupData, setSetupData] = useState<SetupData | null>(null);
+  const [copied, setCopied] = useState(false);
 
-  const allKeys = publicKey ? [publicKey, ...additionalKeys.filter(Boolean)] : [];
-  const validKeys = allKeys.filter((k) => PUBLIC_KEY_REGEX.test(k));
-  const maxThreshold = validKeys.length;
-
-  function addKeyField() {
-    setAdditionalKeys((prev) => [...prev, ""]);
-  }
-
-  function removeKeyField(index: number) {
-    setAdditionalKeys((prev) => prev.filter((_, i) => i !== index));
-  }
-
-  function updateKey(index: number, value: string) {
-    setAdditionalKeys((prev) => {
-      const next = [...prev];
-      next[index] = value;
-      return next;
-    });
-    setDerivedAddress(null);
-  }
-
-  async function previewAddress() {
+  // Step 1 -> Step 2
+  function goToAddresses() {
     setError(null);
-    setDerivedAddress(null);
-
-    if (validKeys.length < 2) {
-      setError("At least 2 valid public keys are required.");
+    if (threshold > numSigners) {
+      setError("Threshold cannot exceed number of signers.");
       return;
     }
-    if (threshold < 1 || threshold > maxThreshold) {
-      setError(`Threshold must be between 1 and ${maxThreshold}.`);
+    // Initialize address slots (first is the connected wallet)
+    const slots = Array.from({ length: numSigners - 1 }, () => "");
+    setSignerAddresses(slots);
+    setStep("addresses");
+  }
+
+  // Step 2 -> create setup
+  async function createSetup() {
+    setError(null);
+    if (!address || !network) {
+      setError("Wallet not connected.");
       return;
     }
 
-    try {
-      const res = await fetch("/api/multisig/derive", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ publicKeys: validKeys, threshold }),
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        setError(data.error ?? "Failed to derive address");
+    const allAddresses = [address, ...signerAddresses];
+
+    // Validate all addresses
+    for (let i = 0; i < allAddresses.length; i++) {
+      if (!ADDRESS_REGEX.test(allAddresses[i])) {
+        setError(`Signer #${i} has an invalid address.`);
         return;
       }
-      const data = await res.json();
-      setDerivedAddress(data.address);
-    } catch {
-      setError("Failed to derive address. Please check your inputs.");
     }
-  }
 
-  async function createMultisig() {
-    setError(null);
+    // Check for duplicates
+    const unique = new Set(allAddresses.map((a) => a.toLowerCase()));
+    if (unique.size !== allAddresses.length) {
+      setError("Duplicate addresses are not allowed.");
+      return;
+    }
+
     setLoading(true);
-
-    if (validKeys.length < 2) {
-      setError("At least 2 valid public keys are required.");
-      setLoading(false);
-      return;
-    }
-    if (!network) {
-      setError("Wallet not connected or network unavailable.");
-      setLoading(false);
-      return;
-    }
-
     try {
-      const res = await fetch("/api/multisig", {
+      const res = await fetch("/api/multisig/setup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          publicKeys: validKeys,
+          addresses: allAddresses,
           threshold,
           network,
           label: label || undefined,
+          createdBy: address,
         }),
       });
 
       if (!res.ok) {
         const data = await res.json();
-        setError(data.error ?? "Failed to create multisig");
+        setError(data.error ?? "Failed to create setup");
         setLoading(false);
         return;
       }
 
       const data = await res.json();
-      router.push(`/multisig/${data.address}?network=${network}`);
+      // Fetch the full setup data
+      const setupRes = await fetch(`/api/multisig/setup/${data.id}`);
+      const setup = await setupRes.json();
+      setSetupData(setup);
+      setStep("verify");
     } catch {
-      setError("Failed to create multisig. Please try again.");
+      setError("Failed to create setup. Please try again.");
+    } finally {
       setLoading(false);
     }
   }
+
+  // Creator verification
+  const verifyCreator = useCallback(async () => {
+    if (!setupData || !address) return;
+    setError(null);
+    setLoading(true);
+
+    try {
+      const nonce = crypto.randomUUID();
+      const signResult = await adapter.signMessage({
+        message: `Verify signer for Aptos Multisig Setup\nSetup: ${setupData.id}`,
+        nonce,
+      });
+
+      const signature = signResult.signature.toString();
+      const fullMessage = signResult.fullMessage;
+
+      const res = await fetch(`/api/multisig/setup/${setupData.id}/verify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          address,
+          publicKey: adapter.account?.publicKey?.toString(),
+          signature,
+          fullMessage,
+          nonce,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        setError(data.error ?? "Verification failed");
+        setLoading(false);
+        return;
+      }
+
+      // Refresh setup data
+      const setupRes = await fetch(`/api/multisig/setup/${setupData.id}`);
+      const updated = await setupRes.json();
+      setSetupData(updated);
+    } catch (err) {
+      setError(`Verification failed: ${(err as Error).message}`);
+    } finally {
+      setLoading(false);
+    }
+  }, [setupData, address, adapter]);
+
+  // Refresh setup status
+  const refreshStatus = useCallback(async () => {
+    if (!setupData) return;
+    try {
+      const res = await fetch(`/api/multisig/setup/${setupData.id}`);
+      const updated = await res.json();
+      setSetupData(updated);
+    } catch {
+      // ignore refresh errors
+    }
+  }, [setupData]);
+
+  function copyLink() {
+    if (!setupData) return;
+    const url = `${window.location.origin}/multisig/setup/${setupData.id}`;
+    navigator.clipboard.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  function updateSignerAddress(index: number, value: string) {
+    setSignerAddresses((prev) => {
+      const next = [...prev];
+      next[index] = value;
+      return next;
+    });
+  }
+
+  const isCreatorVerified =
+    setupData?.verifications?.some(
+      (v) => v.address.toLowerCase() === address?.toLowerCase()
+    ) ?? false;
 
   return (
     <Card>
@@ -138,69 +225,53 @@ export function MultisigCreator() {
           </div>
         )}
 
-        {connected && publicKey && (
+        {connected && step === "configure" && (
           <>
-            {/* Signer #0 - connected wallet */}
             <div className="space-y-2">
-              <Label>Signer #0 (your wallet)</Label>
-              {address && (
-                <p className="text-xs text-muted-foreground">
-                  Address: <code>{address}</code>
-                </p>
-              )}
-              <Input value={publicKey} disabled className="font-mono text-xs" />
-              <p className="text-xs text-muted-foreground">
-                This is your Ed25519 public key, which differs from your account address.
-                Multisig accounts are derived from public keys.
+              <Label>Number of Signers</Label>
+              <Select
+                value={numSigners}
+                onValueChange={(val) => {
+                  const n = Number(val);
+                  setNumSigners(n);
+                  if (threshold > n) setThreshold(n);
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: 9 }, (_, i) => i + 2).map((n) => (
+                    <SelectItem key={n} value={n}>
+                      {n} signers
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Threshold</Label>
+              <Select
+                value={threshold}
+                onValueChange={(val) => setThreshold(Number(val))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: numSigners }, (_, i) => i + 1).map((n) => (
+                    <SelectItem key={n} value={n}>
+                      {n}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-sm text-muted-foreground">
+                {threshold}-of-{numSigners} multisig
               </p>
             </div>
 
-            {/* Additional signers */}
-            <div className="space-y-2">
-              <Label>Additional Signers</Label>
-              {additionalKeys.map((key, index) => (
-                <div key={index} className="flex gap-2">
-                  <Input
-                    placeholder="0x... (64 hex chars)"
-                    value={key}
-                    onChange={(e) => updateKey(index, e.target.value)}
-                    className={`font-mono text-xs ${key && !PUBLIC_KEY_REGEX.test(key) ? "border-red-500" : ""}`}
-                  />
-                  {additionalKeys.length > 1 && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => removeKeyField(index)}
-                    >
-                      Remove
-                    </Button>
-                  )}
-                </div>
-              ))}
-              <Button variant="outline" size="sm" onClick={addKeyField}>
-                + Add Signer
-              </Button>
-            </div>
-
-            {/* Threshold */}
-            <div className="space-y-2">
-              <Label htmlFor="threshold">
-                Threshold (min 1, max {maxThreshold || "N"})
-              </Label>
-              <Input
-                id="threshold"
-                type="number"
-                min={1}
-                max={maxThreshold || 1}
-                value={threshold}
-                onChange={(e) => {
-                  setThreshold(Number(e.target.value));
-                  setDerivedAddress(null);
-                }}
-              />
-            </div>
-
-            {/* Optional label */}
             <div className="space-y-2">
               <Label htmlFor="label">Label (optional)</Label>
               <Input
@@ -211,32 +282,160 @@ export function MultisigCreator() {
               />
             </div>
 
-            {/* Error display */}
             {error && (
               <Alert variant="destructive">
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
 
-            {/* Derived address */}
-            {derivedAddress && (
-              <Alert>
-                <AlertDescription>
-                  <span className="font-medium">Derived address:</span>{" "}
-                  <code className="text-xs break-all">{derivedAddress}</code>
-                </AlertDescription>
+            <Button onClick={goToAddresses}>Next</Button>
+          </>
+        )}
+
+        {connected && step === "addresses" && (
+          <>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Signer #0 (your wallet)</Label>
+                <Input
+                  value={address ?? ""}
+                  disabled
+                  className="font-mono text-xs"
+                />
+              </div>
+
+              {signerAddresses.map((addr, index) => (
+                <div key={index} className="space-y-2">
+                  <Label>Signer #{index + 1}</Label>
+                  <Input
+                    placeholder="0x... (64 hex chars)"
+                    value={addr}
+                    onChange={(e) => updateSignerAddress(index, e.target.value)}
+                    className={`font-mono text-xs ${addr && !ADDRESS_REGEX.test(addr) ? "border-red-500" : ""}`}
+                  />
+                </div>
+              ))}
+            </div>
+
+            {error && (
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
 
-            {/* Actions */}
             <div className="flex gap-4">
-              <Button variant="outline" onClick={previewAddress}>
-                Preview Address
+              <Button variant="outline" onClick={() => setStep("configure")}>
+                Back
               </Button>
-              <Button onClick={createMultisig} disabled={loading}>
-                {loading ? "Creating..." : "Create Multisig"}
+              <Button onClick={createSetup} disabled={loading}>
+                {loading ? "Creating..." : "Create Setup"}
               </Button>
             </div>
+          </>
+        )}
+
+        {connected && step === "verify" && setupData && (
+          <>
+            <div className="space-y-2">
+              <p className="text-sm font-medium">
+                {setupData.threshold}-of-{setupData.addresses.length} multisig
+                {setupData.label ? ` - ${setupData.label}` : ""}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Network: {setupData.network}
+              </p>
+            </div>
+
+            {/* Creator verification */}
+            {!isCreatorVerified && (
+              <div className="space-y-2">
+                <p className="text-sm">Sign to verify your identity as a signer.</p>
+                <Button onClick={verifyCreator} disabled={loading}>
+                  {loading ? "Signing..." : "Sign to Verify"}
+                </Button>
+              </div>
+            )}
+
+            {isCreatorVerified && (
+              <>
+                {/* Shareable link */}
+                <div className="space-y-2">
+                  <Label>Share this link with other signers</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      value={`${typeof window !== "undefined" ? window.location.origin : ""}/multisig/setup/${setupData.id}`}
+                      readOnly
+                      className="font-mono text-xs"
+                    />
+                    <Button variant="outline" size="sm" onClick={copyLink}>
+                      {copied ? "Copied!" : <Copy className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Verification status */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label>Signer Verification Status</Label>
+                    <Button variant="outline" size="sm" onClick={refreshStatus}>
+                      Refresh
+                    </Button>
+                  </div>
+                  {setupData.addresses.map((addr: string, i: number) => {
+                    const verified = setupData.verifications.some(
+                      (v) => v.address.toLowerCase() === addr.toLowerCase()
+                    );
+                    return (
+                      <div
+                        key={addr}
+                        className="flex items-center justify-between rounded-md border p-3"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-medium">Signer #{i}</p>
+                          <p className="truncate font-mono text-xs text-muted-foreground">
+                            {addr}
+                          </p>
+                        </div>
+                        {verified ? (
+                          <Badge variant="default" className="ml-2 shrink-0">
+                            <CheckCircle2 className="mr-1 h-3 w-3" />
+                            Verified
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="ml-2 shrink-0">
+                            <Clock className="mr-1 h-3 w-3" />
+                            Pending
+                          </Badge>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Complete state */}
+                {setupData.status === "complete" && (
+                  <Alert>
+                    <AlertDescription className="space-y-2">
+                      <p className="font-medium">
+                        All signers verified! Multisig created.
+                      </p>
+                      <a
+                        href={`/multisig/setup/${setupData.id}`}
+                        className="inline-flex items-center gap-1 text-sm underline"
+                      >
+                        Go to Dashboard <ExternalLink className="h-3 w-3" />
+                      </a>
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </>
+            )}
+
+            {error && (
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
           </>
         )}
       </CardContent>
