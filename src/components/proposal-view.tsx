@@ -229,33 +229,21 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
 
       // Extract the raw Ed25519 signature (64 bytes) from the authenticator.
       //
-      // The authenticator is either:
-      //   AccountAuthenticatorEd25519 → .signature is Ed25519Signature
-      //   AccountAuthenticatorSingleKey → .signature is AnySignature
-      //     → AnySignature.signature is Ed25519Signature
+      // The authenticator BCS format is:
+      //   AccountAuthenticatorSingleKey (variant 2):
+      //     [02] [AnyPublicKey: 00 + 20-byte Ed25519PK] [AnySignature: 00 + 40-byte Ed25519Sig]
+      //   AccountAuthenticatorEd25519 (variant 0):
+      //     [00] [32-byte Ed25519PK] [64-byte Ed25519Sig]
       //
-      // We walk the .signature chain until we find a 64-byte value,
-      // using property inspection instead of instanceof (which fails
-      // across module boundaries with dynamic imports).
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let sigObj: any = (authenticator as any).signature;
-
-      // AnySignature wraps the real signature in .signature
-      if (sigObj && typeof sigObj === "object" && "signature" in sigObj) {
-        sigObj = sigObj.signature;
+      // We BCS-serialize the authenticator and parse the last 64 bytes as the
+      // raw Ed25519 signature, since it's always at the end.
+      const bcsBytes = authenticator.bcsToBytes();
+      // The last 64 bytes of the BCS are always the raw Ed25519 signature
+      const sigBytes = bcsBytes.slice(-64);
+      if (sigBytes.length !== 64) {
+        throw new Error(`Expected 64-byte signature at end of authenticator BCS, got ${sigBytes.length}`);
       }
-
-      // Now sigObj should be an Ed25519Signature with toUint8Array()
-      let sigHex: string;
-      if (sigObj && typeof sigObj.toUint8Array === "function") {
-        const bytes: Uint8Array = sigObj.toUint8Array();
-        if (bytes.length !== 64) {
-          throw new Error(`Expected 64-byte Ed25519 signature, got ${bytes.length}`);
-        }
-        sigHex = "0x" + Array.from(bytes).map((b: number) => b.toString(16).padStart(2, "0")).join("");
-      } else {
-        throw new Error("Could not extract Ed25519 signature from authenticator");
-      }
+      const sigHex = "0x" + Array.from(sigBytes).map((b: number) => b.toString(16).padStart(2, "0")).join("");
 
       const res = await fetch(`/api/proposal/${proposalId}/sign`, {
         method: "POST",
