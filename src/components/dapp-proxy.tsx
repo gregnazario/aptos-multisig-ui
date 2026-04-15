@@ -6,13 +6,15 @@ import { useWallet } from "@/components/wallet-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { DappTxConfirmModal } from "@/components/dapp-tx-confirm-modal";
 import type { AptosNetwork } from "@/lib/aptos/client";
 
@@ -31,7 +33,7 @@ interface PendingRequest {
 }
 
 const PRESET_DAPPS = [
-  { label: "Aries Markets", url: "https://ariesmarkets.xyz" },
+  { label: "Aries Markets", url: "https://app.ariesmarkets.xyz" },
 ];
 
 export function DappProxy({
@@ -47,8 +49,8 @@ export function DappProxy({
   const [loadedUrl, setLoadedUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(true);
 
-  // Transaction confirmation modal state
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingRequest, setPendingRequest] = useState<PendingRequest | null>(
     null
@@ -59,10 +61,10 @@ export function DappProxy({
   function handleLoad() {
     const url = dappUrl.trim();
     if (!url) return;
-    // Ensure the URL has a protocol
     const fullUrl = url.startsWith("http") ? url : `https://${url}`;
     setLoadedUrl(fullUrl);
     setError(null);
+    setSheetOpen(false);
   }
 
   function sendResponse(id: number, result: unknown, error?: string) {
@@ -103,7 +105,6 @@ export function DappProxy({
 
         case "signTransaction":
         case "signAndSubmitTransaction":
-          // Open confirmation modal
           setPendingRequest({ id, method, params });
           setConfirmOpen(true);
           break;
@@ -137,12 +138,16 @@ export function DappProxy({
     try {
       const token = await verifyIdentity();
 
-      // Parse the dApp payload into our proposal format
       const dappPayload = pendingRequest.params;
       const fnParts = (dappPayload.function ?? "").split("::");
-      const moduleAddr = fnParts.length >= 2 ? fnParts.slice(0, -2).join("::") || fnParts[0] : "0x1";
-      const moduleName = fnParts.length >= 2 ? fnParts[fnParts.length - 2] : "";
-      const functionName = fnParts.length >= 1 ? fnParts[fnParts.length - 1] : "";
+      const moduleAddr =
+        fnParts.length >= 2
+          ? fnParts.slice(0, -2).join("::") || fnParts[0]
+          : "0x1";
+      const moduleName =
+        fnParts.length >= 2 ? fnParts[fnParts.length - 2] : "";
+      const functionName =
+        fnParts.length >= 1 ? fnParts[fnParts.length - 1] : "";
 
       const payload = {
         module: `${moduleAddr}::${moduleName}`,
@@ -181,7 +186,6 @@ export function DappProxy({
 
       const data = await res.json();
 
-      // Respond to the iframe explaining the multisig flow
       sendResponse(
         pendingRequest.id,
         undefined,
@@ -218,82 +222,102 @@ export function DappProxy({
   }
 
   return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle>dApp Browser</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Load a dApp to interact with it using your multisig wallet (
-            {multisigAddress.slice(0, 8)}...{multisigAddress.slice(-6)}).
-            Transactions will be captured as multisig proposals requiring{" "}
-            {threshold}-of-{publicKeys.length} signatures.
-          </p>
+    <div className="fixed inset-0 flex flex-col">
+      {/* Top bar */}
+      <div className="flex items-center gap-2 border-b bg-background px-3 py-2 shrink-0">
+        <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+          <SheetTrigger render={<Button variant="outline" size="sm" />}>
+            Settings
+          </SheetTrigger>
+          <SheetContent side="left" className="w-80 sm:max-w-sm">
+            <SheetHeader>
+              <SheetTitle>dApp Browser</SheetTitle>
+              <SheetDescription>
+                Interact with dApps using your multisig wallet (
+                {multisigAddress.slice(0, 8)}...{multisigAddress.slice(-6)}).
+                Transactions become {threshold}-of-{publicKeys.length} proposals.
+              </SheetDescription>
+            </SheetHeader>
 
-          {/* Preset dApps */}
-          <div className="space-y-2">
-            <Label>Presets</Label>
-            <div className="flex flex-wrap gap-2">
-              {PRESET_DAPPS.map((preset) => (
+            <div className="space-y-4 p-4">
+              {/* Presets */}
+              <div className="space-y-2">
+                <Label>Presets</Label>
+                <div className="flex flex-wrap gap-2">
+                  {PRESET_DAPPS.map((preset) => (
+                    <Button
+                      key={preset.url}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setDappUrl(preset.url);
+                        const fullUrl = preset.url.startsWith("http")
+                          ? preset.url
+                          : `https://${preset.url}`;
+                        setLoadedUrl(fullUrl);
+                        setError(null);
+                        setSheetOpen(false);
+                      }}
+                    >
+                      {preset.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              {/* URL input */}
+              <div className="space-y-2">
+                <Label htmlFor="dappUrl">Custom URL</Label>
+                <Input
+                  id="dappUrl"
+                  placeholder="https://example.com"
+                  value={dappUrl}
+                  onChange={(e) => setDappUrl(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleLoad()}
+                />
                 <Button
-                  key={preset.url}
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setDappUrl(preset.url);
-                  }}
+                  onClick={handleLoad}
+                  disabled={!dappUrl.trim()}
+                  className="w-full"
                 >
-                  {preset.label}
+                  Load
                 </Button>
-              ))}
+              </div>
+
+              {error && (
+                <Alert variant="destructive">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
             </div>
-          </div>
+          </SheetContent>
+        </Sheet>
 
-          {/* URL input */}
-          <div className="space-y-2">
-            <Label htmlFor="dappUrl">dApp URL</Label>
-            <div className="flex gap-2">
-              <Input
-                id="dappUrl"
-                placeholder="https://example.com"
-                value={dappUrl}
-                onChange={(e) => setDappUrl(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleLoad()}
-              />
-              <Button onClick={handleLoad} disabled={!dappUrl.trim()}>
-                Load
-              </Button>
-            </div>
-          </div>
+        {loadedUrl && (
+          <span className="text-xs text-muted-foreground truncate">
+            {loadedUrl}
+          </span>
+        )}
 
-          {error && (
-            <Alert variant="destructive">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-        </CardContent>
-      </Card>
+        {loading && (
+          <span className="text-xs text-muted-foreground ml-auto">
+            Creating proposal...
+          </span>
+        )}
+      </div>
 
-      {/* iframe */}
-      {loadedUrl && (
-        <div className="rounded-lg border overflow-hidden">
-          {/*
-           * NOTE: Cross-origin limitation
-           * The dapp-wallet-inject.js script cannot be automatically injected
-           * into a cross-origin iframe. The sandbox attribute allows scripts
-           * and same-origin access for dApps that cooperate, but most dApps
-           * will not have our inject script loaded. A server-side HTML proxy
-           * would be needed for a production solution.
-           */}
-          <iframe
-            ref={iframeRef}
-            src={loadedUrl}
-            sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-            className="w-full border-0"
-            style={{ height: "70vh" }}
-            title="dApp Browser"
-          />
+      {/* Full-view iframe */}
+      {loadedUrl ? (
+        <iframe
+          ref={iframeRef}
+          src={loadedUrl}
+          sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+          className="flex-1 w-full border-0"
+          title="dApp Browser"
+        />
+      ) : (
+        <div className="flex-1 flex items-center justify-center text-muted-foreground">
+          <p>Open the settings panel to load a dApp.</p>
         </div>
       )}
 
@@ -305,8 +329,7 @@ export function DappProxy({
             ? {
                 function: pendingRequest.params.function ?? "",
                 arguments: (pendingRequest.params.arguments ?? []).map(String),
-                type_arguments:
-                  pendingRequest.params.type_arguments ?? [],
+                type_arguments: pendingRequest.params.type_arguments ?? [],
               }
             : null
         }
@@ -314,12 +337,6 @@ export function DappProxy({
         onConfirm={handleConfirm}
         onCancel={handleCancel}
       />
-
-      {loading && (
-        <div className="text-sm text-muted-foreground text-center">
-          Creating multisig proposal...
-        </div>
-      )}
     </div>
   );
 }
