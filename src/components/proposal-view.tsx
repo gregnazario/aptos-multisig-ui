@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useWallet as useAdapterWallet } from "@aptos-labs/wallet-adapter-react";
 import { useWallet } from "@/components/wallet-provider";
 import { SignerStatusGrid } from "@/components/signer-status-grid";
@@ -94,6 +94,8 @@ function getStatusBadge(status: string, expirationSecs: number) {
       return <Badge variant="destructive">Failed</Badge>;
     case "cancelled":
       return <Badge variant="secondary">Cancelled</Badge>;
+    case "confirmed":
+      return <Badge className="bg-green-600 text-white">Confirmed</Badge>;
     default:
       return <Badge variant="secondary">{status}</Badge>;
   }
@@ -153,6 +155,44 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
   useEffect(() => {
     fetchProposal();
   }, [fetchProposal]);
+
+  // Poll on-chain status after submission at 5s, 10s, 60s
+  const pollTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  useEffect(() => {
+    // Clear any existing timers
+    pollTimers.current.forEach(clearTimeout);
+    pollTimers.current = [];
+
+    if (!proposal || proposal.status !== "submitted") return;
+
+    const checkStatus = async () => {
+      try {
+        const res = await fetch(`/api/proposal/${proposalId}/check-status`, {
+          method: "POST",
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.status !== "submitted") {
+            // Status changed — refresh the full proposal
+            fetchProposal();
+          }
+        }
+      } catch {
+        // Ignore polling errors
+      }
+    };
+
+    const delays = [5000, 10000, 60000];
+    delays.forEach((delay) => {
+      pollTimers.current.push(setTimeout(checkStatus, delay));
+    });
+
+    return () => {
+      pollTimers.current.forEach(clearTimeout);
+      pollTimers.current = [];
+    };
+  }, [proposal?.status, proposalId, fetchProposal]);
 
   if (loading) {
     return (
