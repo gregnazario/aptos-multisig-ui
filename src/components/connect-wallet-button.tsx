@@ -22,7 +22,13 @@ export function ConnectWalletButton() {
     );
   }
 
-  const availableWallets = adapter.wallets ?? [];
+  // The adapter's DEFAULT_CONTEXT only has { connected: false }, so all
+  // other properties are undefined before the provider fully mounts.
+  if (!adapter.wallets) {
+    return <Button disabled>Loading...</Button>;
+  }
+
+  const availableWallets = adapter.wallets;
 
   if (availableWallets.length === 0) {
     return (
