@@ -306,11 +306,11 @@ export function DappProxy({
         )}
       </div>
 
-      {/* Full-view iframe — loaded through our proxy to inject the wallet script */}
+      {/* Full-view iframe — loaded through our reverse proxy to inject the wallet script */}
       {loadedUrl ? (
         <iframe
           ref={iframeRef}
-          src={`/api/dapp-proxy?url=${encodeURIComponent(loadedUrl)}`}
+          src={`/api/dapp-proxy/?origin=${encodeURIComponent(loadedUrl)}`}
           className="flex-1 w-full border-0"
           title="dApp Browser"
         />
