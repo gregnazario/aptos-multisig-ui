@@ -488,18 +488,17 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
 
       {/* Navigation */}
       <div className="flex gap-3 pt-2">
-        <a
-          href={`/multisig/${proposal.multisig.address}?network=${proposal.multisig.network}`}
-          className="text-sm underline text-muted-foreground hover:text-foreground"
+        <Button
+          variant="outline"
+          onClick={() => window.location.href = `/multisig/${proposal.multisig.address}?network=${proposal.multisig.network}`}
         >
           Back to Dashboard
-        </a>
-        <a
-          href={`/multisig/${proposal.multisig.address}/propose?network=${proposal.multisig.network}`}
-          className="text-sm underline text-muted-foreground hover:text-foreground"
+        </Button>
+        <Button
+          onClick={() => window.location.href = `/multisig/${proposal.multisig.address}/propose?network=${proposal.multisig.network}`}
         >
           New Proposal
-        </a>
+        </Button>
       </div>
     </div>
   );
