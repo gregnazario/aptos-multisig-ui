@@ -108,12 +108,7 @@ export async function submitMultisigTransaction(params: {
     senderAuthenticator: authenticator,
   });
 
-  const result = await aptos.waitForTransaction({
-    transactionHash: response.hash,
-  });
-  if (!result.success) {
-    throw new Error(`Transaction failed: ${result.vm_status}`);
-  }
-
+  // Return the hash immediately — don't wait for on-chain confirmation.
+  // The caller should poll /api/proposal/{id}/check-status for the result.
   return response.hash;
 }
