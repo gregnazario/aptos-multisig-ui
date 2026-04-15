@@ -232,14 +232,36 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
       // Extract the raw Ed25519 signature from the authenticator.
       // Petra may return AccountAuthenticatorEd25519 (legacy) or
       // AccountAuthenticatorSingleKey (modern AIP-62).
+      // We use property checks instead of instanceof because the classes
+      // from dynamic import() may differ from the adapter's internal copies.
+      const auth = authenticator as unknown as Record<string, unknown>;
       let sigHex: string;
-      if (authenticator instanceof AccountAuthenticatorEd25519) {
-        sigHex = authenticator.signature.toString();
-      } else if (authenticator instanceof AccountAuthenticatorSingleKey) {
-        sigHex = authenticator.signature.toString();
+
+      if ("signature" in auth && auth.signature && typeof (auth.signature as Record<string, unknown>).bcsToHex === "function") {
+        // AccountAuthenticatorEd25519 or AccountAuthenticatorSingleKey
+        // both have a .signature property with .bcsToHex()
+        const sig = auth.signature as { bcsToHex: () => { toString: () => string }; toString: () => string };
+
+        // For SingleKey, .signature is an AnySignature wrapping the actual sig.
+        // For Ed25519, .signature is an Ed25519Signature directly.
+        // .toString() on Ed25519Signature gives the hex of just the 64 bytes.
+        const raw = sig.toString();
+
+        // Ed25519 sigs are 64 bytes = 128 hex chars (+ optional 0x prefix)
+        const stripped = raw.replace(/^0x/, "");
+        if (stripped.length === 128) {
+          sigHex = raw;
+        } else {
+          // The signature object might be wrapped (AnySignature).
+          // BCS-serialize and extract: AnySignature BCS = variant(1 byte) + sig(64 bytes)
+          const bcsHex = sig.bcsToHex().toString().replace(/^0x/, "");
+          // Last 128 hex chars are the raw Ed25519 signature
+          sigHex = "0x" + bcsHex.slice(-128);
+        }
       } else {
-        // Fallback: serialize the whole authenticator
-        sigHex = authenticator.bcsToHex().toString();
+        throw new Error(
+          "Unexpected authenticator format — could not extract Ed25519 signature"
+        );
       }
 
       const res = await fetch(`/api/proposal/${proposalId}/sign`, {
