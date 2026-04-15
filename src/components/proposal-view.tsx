@@ -50,6 +50,7 @@ interface ProposalData {
   feePayerSignature: string | null;
   status: string;
   txHash: string | null;
+  failureReason: string | null;
   createdBy: string;
   createdAt: string;
   updatedAt: string;
@@ -362,7 +363,20 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
           {proposal.txHash && (
             <div>
               <span className="font-medium">Tx Hash: </span>
-              <code className="text-xs">{proposal.txHash}</code>
+              <a
+                href={`https://explorer.aptoslabs.com/txn/${proposal.txHash}?network=${proposal.multisig.network}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs font-mono text-blue-600 hover:underline break-all"
+              >
+                {proposal.txHash}
+              </a>
+            </div>
+          )}
+          {proposal.failureReason && (
+            <div>
+              <span className="font-medium text-destructive">Failure Reason: </span>
+              <span className="text-xs text-destructive">{proposal.failureReason}</span>
             </div>
           )}
         </CardContent>
@@ -471,6 +485,22 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
           </CardContent>
         </Card>
       )}
+
+      {/* Navigation */}
+      <div className="flex gap-3 pt-2">
+        <a
+          href={`/multisig/${proposal.multisig.address}?network=${proposal.multisig.network}`}
+          className="text-sm underline text-muted-foreground hover:text-foreground"
+        >
+          Back to Dashboard
+        </a>
+        <a
+          href={`/multisig/${proposal.multisig.address}/propose?network=${proposal.multisig.network}`}
+          className="text-sm underline text-muted-foreground hover:text-foreground"
+        >
+          New Proposal
+        </a>
+      </div>
     </div>
   );
 }

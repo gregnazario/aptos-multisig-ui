@@ -30,6 +30,7 @@ export const proposals = sqliteTable("proposals", {
   feePayerSignature: text("fee_payer_signature"),
   status: text("status").notNull().default("pending"), // pending|ready|submitted|expired|failed
   txHash: text("tx_hash"),
+  failureReason: text("failure_reason"),
   createdBy: text("created_by").notNull(), // public key hex of proposer
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
