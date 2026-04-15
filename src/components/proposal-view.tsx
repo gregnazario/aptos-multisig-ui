@@ -204,10 +204,43 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
     try {
       const token = await verifyIdentity();
 
-      const signResult = await adapter.signMessage({
-        message: proposal.rawTransactionBytes,
-        nonce: proposalId,
+      // Deserialize the stored transaction bytes back into a SimpleTransaction
+      const {
+        SimpleTransaction,
+        Deserializer,
+        AccountAuthenticatorEd25519,
+        AccountAuthenticatorSingleKey,
+      } = await import("@aptos-labs/ts-sdk");
+
+      // Convert hex string to Uint8Array (browser-safe, no Buffer)
+      const hex = proposal.rawTransactionBytes.replace(/^0x/, "");
+      const txBytes = new Uint8Array(
+        hex.match(/.{1,2}/g)!.map((byte) => parseInt(byte, 16))
+      );
+      const deserializer = new Deserializer(txBytes);
+      const transaction = SimpleTransaction.deserialize(deserializer);
+
+      // signTransaction returns an AccountAuthenticator with the Ed25519 signature.
+      // The type cast is needed because the SDK's SimpleTransaction and the
+      // adapter's AnyRawTransaction are structurally identical but from
+      // potentially different package versions.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { authenticator } = await adapter.signTransaction({
+        transactionOrPayload: transaction as any,
       });
+
+      // Extract the raw Ed25519 signature from the authenticator.
+      // Petra may return AccountAuthenticatorEd25519 (legacy) or
+      // AccountAuthenticatorSingleKey (modern AIP-62).
+      let sigHex: string;
+      if (authenticator instanceof AccountAuthenticatorEd25519) {
+        sigHex = authenticator.signature.toString();
+      } else if (authenticator instanceof AccountAuthenticatorSingleKey) {
+        sigHex = authenticator.signature.toString();
+      } else {
+        // Fallback: serialize the whole authenticator
+        sigHex = authenticator.bcsToHex().toString();
+      }
 
       const res = await fetch(`/api/proposal/${proposalId}/sign`, {
         method: "POST",
@@ -215,7 +248,7 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ signature: signResult.signature.toString() }),
+        body: JSON.stringify({ signature: sigHex }),
       });
 
       if (!res.ok) {
