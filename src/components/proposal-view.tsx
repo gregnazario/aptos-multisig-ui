@@ -18,7 +18,8 @@ import { Textarea } from "@/components/ui/textarea";
 interface ProposalPayload {
   module: string;
   function: string;
-  type_args: string[];
+  typeArgs?: string[];
+  type_args?: string[];
   args: string[];
 }
 
@@ -326,11 +327,11 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
               {payload.module}::{payload.function}
             </code>
           </div>
-          {payload.type_args.length > 0 && (
+          {(payload.typeArgs ?? payload.type_args ?? []).length > 0 && (
             <div>
               <span className="font-medium">Type Arguments: </span>
               <code className="text-xs">
-                {payload.type_args.join(", ")}
+                {(payload.typeArgs ?? payload.type_args ?? []).join(", ")}
               </code>
             </div>
           )}
