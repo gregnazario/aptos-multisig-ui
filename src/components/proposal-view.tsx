@@ -208,8 +208,6 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
       const {
         SimpleTransaction,
         Deserializer,
-        AccountAuthenticatorEd25519,
-        AccountAuthenticatorSingleKey,
       } = await import("@aptos-labs/ts-sdk");
 
       // Convert hex string to Uint8Array (browser-safe, no Buffer)
@@ -229,39 +227,34 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
         transactionOrPayload: transaction as any,
       });
 
-      // Extract the raw Ed25519 signature from the authenticator.
-      // Petra may return AccountAuthenticatorEd25519 (legacy) or
-      // AccountAuthenticatorSingleKey (modern AIP-62).
-      // We use property checks instead of instanceof because the classes
-      // from dynamic import() may differ from the adapter's internal copies.
-      const auth = authenticator as unknown as Record<string, unknown>;
+      // Extract the raw Ed25519 signature (64 bytes) from the authenticator.
+      //
+      // The authenticator is either:
+      //   AccountAuthenticatorEd25519 → .signature is Ed25519Signature
+      //   AccountAuthenticatorSingleKey → .signature is AnySignature
+      //     → AnySignature.signature is Ed25519Signature
+      //
+      // We walk the .signature chain until we find a 64-byte value,
+      // using property inspection instead of instanceof (which fails
+      // across module boundaries with dynamic imports).
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let sigObj: any = (authenticator as any).signature;
+
+      // AnySignature wraps the real signature in .signature
+      if (sigObj && typeof sigObj === "object" && "signature" in sigObj) {
+        sigObj = sigObj.signature;
+      }
+
+      // Now sigObj should be an Ed25519Signature with toUint8Array()
       let sigHex: string;
-
-      if ("signature" in auth && auth.signature && typeof (auth.signature as Record<string, unknown>).bcsToHex === "function") {
-        // AccountAuthenticatorEd25519 or AccountAuthenticatorSingleKey
-        // both have a .signature property with .bcsToHex()
-        const sig = auth.signature as { bcsToHex: () => { toString: () => string }; toString: () => string };
-
-        // For SingleKey, .signature is an AnySignature wrapping the actual sig.
-        // For Ed25519, .signature is an Ed25519Signature directly.
-        // .toString() on Ed25519Signature gives the hex of just the 64 bytes.
-        const raw = sig.toString();
-
-        // Ed25519 sigs are 64 bytes = 128 hex chars (+ optional 0x prefix)
-        const stripped = raw.replace(/^0x/, "");
-        if (stripped.length === 128) {
-          sigHex = raw;
-        } else {
-          // The signature object might be wrapped (AnySignature).
-          // BCS-serialize and extract: AnySignature BCS = variant(1 byte) + sig(64 bytes)
-          const bcsHex = sig.bcsToHex().toString().replace(/^0x/, "");
-          // Last 128 hex chars are the raw Ed25519 signature
-          sigHex = "0x" + bcsHex.slice(-128);
+      if (sigObj && typeof sigObj.toUint8Array === "function") {
+        const bytes: Uint8Array = sigObj.toUint8Array();
+        if (bytes.length !== 64) {
+          throw new Error(`Expected 64-byte Ed25519 signature, got ${bytes.length}`);
         }
+        sigHex = "0x" + Array.from(bytes).map((b: number) => b.toString(16).padStart(2, "0")).join("");
       } else {
-        throw new Error(
-          "Unexpected authenticator format — could not extract Ed25519 signature"
-        );
+        throw new Error("Could not extract Ed25519 signature from authenticator");
       }
 
       const res = await fetch(`/api/proposal/${proposalId}/sign`, {
