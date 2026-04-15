@@ -92,6 +92,8 @@ function getStatusBadge(status: string, expirationSecs: number) {
       return <Badge variant="destructive">Expired</Badge>;
     case "failed":
       return <Badge variant="destructive">Failed</Badge>;
+    case "cancelled":
+      return <Badge variant="secondary">Cancelled</Badge>;
     default:
       return <Badge variant="secondary">{status}</Badge>;
   }
@@ -128,6 +130,7 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
   const [actionError, setActionError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [cancelling, setCancelling] = useState(false);
 
   const fetchProposal = useCallback(async () => {
     try {
@@ -324,6 +327,30 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
     }
   }
 
+  async function handleCancel() {
+    if (!proposal) return;
+    setCancelling(true);
+    setActionError(null);
+    try {
+      const token = await verifyIdentity();
+      const res = await fetch(`/api/proposal/${proposalId}/cancel`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error ?? "Failed to cancel");
+      }
+      await fetchProposal();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Cancel failed");
+    } finally {
+      setCancelling(false);
+    }
+  }
+
   const signedCount = proposal.responses.filter(
     (r) => r.response === "signed"
   ).length;
@@ -506,6 +533,25 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
             )}
             <Button onClick={handleSubmit} disabled={submitting}>
               {submitting ? "Submitting..." : "Submit Transaction"}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Cancel button — any signer can cancel a pending or ready proposal */}
+      {connected && isSigner && (proposal.status === "pending" || proposal.status === "ready") && (
+        <Card>
+          <CardContent className="pt-6 flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">
+              Any signer can cancel this proposal.
+            </p>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleCancel}
+              disabled={cancelling}
+            >
+              {cancelling ? "Cancelling..." : "Cancel Proposal"}
             </Button>
           </CardContent>
         </Card>
