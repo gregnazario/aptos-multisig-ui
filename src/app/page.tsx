@@ -7,6 +7,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { MyMultisigs } from "@/components/my-multisigs";
 
 export default function Home() {
   return (
@@ -19,6 +20,8 @@ export default function Home() {
             approvals before executing transactions for enhanced security.
           </p>
         </div>
+
+        <MyMultisigs />
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Card>
