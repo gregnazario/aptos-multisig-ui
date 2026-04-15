@@ -159,8 +159,15 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
 
   if (error || !proposal) {
     return (
-      <div className="flex items-center justify-center p-12">
-        <p className="text-destructive">{error ?? "Proposal not found"}</p>
+      <div className="mx-auto max-w-md py-16 text-center space-y-4">
+        <h2 className="text-2xl font-bold">Proposal Not Found</h2>
+        <p className="text-muted-foreground">
+          This proposal doesn&apos;t exist or may have been removed. Check that
+          the link is correct.
+        </p>
+        <a href="/" className="text-sm underline text-muted-foreground hover:text-foreground">
+          Back to home
+        </a>
       </div>
     );
   }
