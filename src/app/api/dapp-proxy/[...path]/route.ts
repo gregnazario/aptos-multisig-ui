@@ -5,17 +5,45 @@ import { NextRequest, NextResponse } from "next/server";
  *
  * Usage: /api/dapp-proxy/{path}?origin=https://app.ariesmarkets.xyz
  *
- * - Proxies ALL requests (HTML, JS, CSS, API calls, images) to the target origin
- * - Injects the wallet script into HTML responses
- * - Preserves headers, cookies, and content types
- * - The iframe loads /api/dapp-proxy/?origin=... and all relative URLs
- *   naturally route through this proxy
+ * - Proxies the initial HTML page from the target origin
+ * - Injects a wallet script + fetch/XHR interceptor into HTML responses
+ * - The <base> tag handles HTML element URLs (script src, link href, img src)
+ * - The fetch/XHR interceptor handles JS API calls (fetch, XMLHttpRequest)
+ * - Non-HTML sub-resources are proxied through for cases where <base> isn't enough
  */
 
-const WALLET_INJECT_SCRIPT = `
+function buildWalletInjectScript(dappOrigin: string): string {
+  return `
 <script data-multisig-wallet-inject="true">
 (function() {
   'use strict';
+  var DAPP_ORIGIN = ${JSON.stringify(dappOrigin)};
+
+  // ── Rewrite relative URLs to the dApp origin ───────────────────────
+  // <base href> handles HTML elements, but fetch()/XHR use window.location.
+  // Override both to redirect relative URLs to the real dApp origin.
+
+  var originalFetch = window.fetch;
+  window.fetch = function(input, init) {
+    if (typeof input === "string" && input.startsWith("/")) {
+      input = DAPP_ORIGIN + input;
+    } else if (input instanceof Request && input.url.startsWith(window.location.origin)) {
+      var newUrl = input.url.replace(window.location.origin, DAPP_ORIGIN);
+      input = new Request(newUrl, input);
+    }
+    return originalFetch.call(this, input, init);
+  };
+
+  var origXHROpen = XMLHttpRequest.prototype.open;
+  XMLHttpRequest.prototype.open = function(method, url) {
+    if (typeof url === "string" && url.startsWith("/")) {
+      url = DAPP_ORIGIN + url;
+    }
+    return origXHROpen.apply(this, arguments);
+  };
+
+  // Also handle dynamic import() by overriding the importmap or using a
+  // service worker in the future. For now, <base href> handles static imports.
 
   // ── Parent frame communication ──────────────────────────────────────
   var resolvers = {};
@@ -128,7 +156,6 @@ const WALLET_INJECT_SCRIPT = `
   Object.keys(wallet.features).forEach(function(k) { wallet[k] = wallet.features[k]; });
 
   function registerWallet() {
-    // Method 1: wallet tells dApp it exists
     try {
       window.dispatchEvent(new CustomEvent("wallet-standard:register-wallet", {
         bubbles: false, cancelable: false,
@@ -136,12 +163,10 @@ const WALLET_INJECT_SCRIPT = `
       }));
     } catch(e) {}
 
-    // Method 2: dApp asks wallets to register
     window.addEventListener("wallet-standard:app-ready", function(e) {
       try { if (e.detail && typeof e.detail.register === "function") e.detail.register(wallet); } catch(e) {}
     });
 
-    // Method 3: legacy
     try {
       if (!window.navigator.wallets) window.navigator.wallets = [];
       if (Array.isArray(window.navigator.wallets)) {
@@ -151,9 +176,110 @@ const WALLET_INJECT_SCRIPT = `
   }
 
   registerWallet();
-  console.log("[MultisigWallet] AIP-62 wallet registered");
+  console.log("[MultisigWallet] AIP-62 wallet registered, fetch/XHR intercepted -> " + DAPP_ORIGIN);
 })();
 </script>`;
+}
+
+/**
+ * Proxy a request to the target origin, forwarding common headers.
+ */
+async function proxyFetch(
+  targetUrl: string,
+  request: NextRequest,
+  origin: string,
+  method: string = "GET",
+  body?: ArrayBuffer
+): Promise<Response> {
+  const headers: Record<string, string> = {
+    "User-Agent": request.headers.get("user-agent") ?? "Mozilla/5.0",
+    Accept: request.headers.get("accept") ?? "*/*",
+    "Accept-Language": request.headers.get("accept-language") ?? "en-US,en;q=0.5",
+    "Accept-Encoding": "identity",
+    Referer: origin,
+    Origin: origin,
+  };
+
+  if (method === "POST" || method === "PUT" || method === "PATCH") {
+    headers["Content-Type"] = request.headers.get("content-type") ?? "application/json";
+  }
+
+  return fetch(targetUrl, {
+    method,
+    headers,
+    body: body ?? undefined,
+    redirect: "follow",
+  });
+}
+
+function buildTargetUrl(
+  path: string[],
+  origin: string,
+  searchParams: URLSearchParams
+): string {
+  const pathStr = path?.join("/") ?? "";
+  const targetUrl = new URL(pathStr, origin.endsWith("/") ? origin : origin + "/");
+
+  searchParams.forEach((value, key) => {
+    if (key !== "origin") {
+      targetUrl.searchParams.set(key, value);
+    }
+  });
+
+  return targetUrl.toString();
+}
+
+async function handleProxyResponse(
+  response: Response,
+  origin: string,
+  isInitialPage: boolean
+): Promise<NextResponse> {
+  const contentType = response.headers.get("content-type") ?? "";
+
+  // Non-HTML: pass through as-is
+  if (!contentType.includes("text/html")) {
+    const body = await response.arrayBuffer();
+    const headers = new Headers();
+    headers.set("Content-Type", contentType);
+
+    const cacheControl = response.headers.get("cache-control");
+    if (cacheControl) headers.set("Cache-Control", cacheControl);
+
+    // Forward CORS headers for sub-resources
+    headers.set("Access-Control-Allow-Origin", "*");
+
+    return new NextResponse(body, { status: response.status, headers });
+  }
+
+  // HTML: inject base tag + wallet script + fetch interceptor
+  let html = await response.text();
+
+  const baseTag = `<base href="${origin}/">`;
+  const injectScript = buildWalletInjectScript(origin);
+
+  const headPattern = /<head[^>]*>/i;
+  if (headPattern.test(html)) {
+    html = html.replace(
+      headPattern,
+      (match) => `${match}${baseTag}${injectScript}`
+    );
+  } else {
+    html = `<!DOCTYPE html><html><head>${baseTag}${injectScript}</head>` + html;
+  }
+
+  // Remove CSP meta tags that block our script
+  html = html.replace(
+    /<meta[^>]*http-equiv=["']Content-Security-Policy["'][^>]*>/gi,
+    ""
+  );
+
+  return new NextResponse(html, {
+    status: response.status,
+    headers: {
+      "Content-Type": "text/html; charset=utf-8",
+    },
+  });
+}
 
 export async function GET(
   request: NextRequest,
@@ -169,75 +295,12 @@ export async function GET(
     );
   }
 
-  // Build target URL: origin + path segments + original query params (minus our "origin" param)
-  const pathStr = path?.join("/") ?? "";
-  const targetUrl = new URL(pathStr, origin.endsWith("/") ? origin : origin + "/");
-
-  // Forward query params (except "origin")
-  request.nextUrl.searchParams.forEach((value, key) => {
-    if (key !== "origin") {
-      targetUrl.searchParams.set(key, value);
-    }
-  });
+  const targetUrl = buildTargetUrl(path, origin, request.nextUrl.searchParams);
+  const isInitialPage = !path || path.length === 0 || path[0] === "";
 
   try {
-    const response = await fetch(targetUrl.toString(), {
-      headers: {
-        "User-Agent":
-          request.headers.get("user-agent") ?? "Mozilla/5.0",
-        Accept: request.headers.get("accept") ?? "*/*",
-        "Accept-Language":
-          request.headers.get("accept-language") ?? "en-US,en;q=0.5",
-        "Accept-Encoding": "identity",
-        Referer: origin,
-        Origin: origin,
-      },
-      redirect: "follow",
-    });
-
-    const contentType = response.headers.get("content-type") ?? "";
-
-    // Non-HTML responses: pass through as-is
-    if (!contentType.includes("text/html")) {
-      const body = await response.arrayBuffer();
-      const headers = new Headers();
-      headers.set("Content-Type", contentType);
-      // Forward cache headers
-      const cacheControl = response.headers.get("cache-control");
-      if (cacheControl) headers.set("Cache-Control", cacheControl);
-      return new NextResponse(body, { status: response.status, headers });
-    }
-
-    // HTML response: inject wallet script + base tag
-    let html = await response.text();
-
-    // Base tag so relative <script>, <link>, <img> resolve to the dApp's real origin.
-    // This doesn't affect fetch() calls, but those typically use absolute URLs.
-    const baseTag = `<base href="${origin}/">`;
-
-    // Inject base tag + wallet script at the very beginning of <head>
-    const headPattern = /<head[^>]*>/i;
-    if (headPattern.test(html)) {
-      html = html.replace(
-        headPattern,
-        (match) => `${match}${baseTag}${WALLET_INJECT_SCRIPT}`
-      );
-    } else {
-      html = baseTag + WALLET_INJECT_SCRIPT + html;
-    }
-
-    // Remove CSP meta tags that might block our injected script
-    html = html.replace(
-      /<meta[^>]*http-equiv=["']Content-Security-Policy["'][^>]*>/gi,
-      ""
-    );
-
-    return new NextResponse(html, {
-      status: response.status,
-      headers: {
-        "Content-Type": "text/html; charset=utf-8",
-      },
-    });
+    const response = await proxyFetch(targetUrl, request, origin);
+    return handleProxyResponse(response, origin, isInitialPage);
   } catch (err) {
     return NextResponse.json(
       { error: `Proxy error: ${(err as Error).message}` },
@@ -246,7 +309,6 @@ export async function GET(
   }
 }
 
-// Also handle POST requests (for API calls the dApp makes)
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ path: string[] }> }
@@ -261,34 +323,18 @@ export async function POST(
     );
   }
 
-  const pathStr = path?.join("/") ?? "";
-  const targetUrl = new URL(pathStr, origin.endsWith("/") ? origin : origin + "/");
-
-  request.nextUrl.searchParams.forEach((value, key) => {
-    if (key !== "origin") {
-      targetUrl.searchParams.set(key, value);
-    }
-  });
+  const targetUrl = buildTargetUrl(path, origin, request.nextUrl.searchParams);
 
   try {
     const body = await request.arrayBuffer();
-    const response = await fetch(targetUrl.toString(), {
-      method: "POST",
-      headers: {
-        "Content-Type": request.headers.get("content-type") ?? "application/json",
-        "User-Agent": request.headers.get("user-agent") ?? "Mozilla/5.0",
-        Referer: origin,
-        Origin: origin,
-      },
-      body,
-      redirect: "follow",
-    });
+    const response = await proxyFetch(targetUrl, request, origin, "POST", body);
 
     const responseBody = await response.arrayBuffer();
     return new NextResponse(responseBody, {
       status: response.status,
       headers: {
         "Content-Type": response.headers.get("content-type") ?? "application/octet-stream",
+        "Access-Control-Allow-Origin": "*",
       },
     });
   } catch (err) {
@@ -297,4 +343,16 @@ export async function POST(
       { status: 502 }
     );
   }
+}
+
+// Handle OPTIONS for CORS preflight
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    },
+  });
 }
