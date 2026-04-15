@@ -123,7 +123,7 @@ export async function POST(
 
     await db
       .update(proposals)
-      .set({ status: "failed", updatedAt: new Date() })
+      .set({ status: "failed", failureReason: message, updatedAt: new Date() })
       .where(eq(proposals.id, id));
 
     return NextResponse.json(

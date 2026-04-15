@@ -15,6 +15,13 @@
       "when": 1776207650534,
       "tag": "0001_special_vermin",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1776213638383,
+      "tag": "0002_dear_retro_girl",
+      "breakpoints": true
     }
   ]
 }
