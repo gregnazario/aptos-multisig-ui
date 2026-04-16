@@ -1,14 +1,14 @@
-import { NextRequest, NextResponse } from "next/server";
+import { and, eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 import { v4 as uuid } from "uuid";
+import { findSignerIndex } from "@/lib/aptos/multisig";
+import { verifySessionToken } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { multisigs, proposals, signerResponses } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
-import { verifySessionToken } from "@/lib/auth/session";
-import { findSignerIndex } from "@/lib/aptos/multisig";
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
 
@@ -17,7 +17,7 @@ export async function POST(
   if (!authHeader?.startsWith("Bearer ")) {
     return NextResponse.json(
       { error: "Missing authorization header" },
-      { status: 401 }
+      { status: 401 },
     );
   }
 
@@ -38,10 +38,7 @@ export async function POST(
   });
 
   if (!proposal) {
-    return NextResponse.json(
-      { error: "Proposal not found" },
-      { status: 404 }
-    );
+    return NextResponse.json({ error: "Proposal not found" }, { status: 404 });
   }
 
   // 4. Check expiration
@@ -53,14 +50,14 @@ export async function POST(
       .where(eq(proposals.id, id));
     return NextResponse.json(
       { error: "Proposal has expired" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
   if (proposal.status !== "pending") {
     return NextResponse.json(
       { error: `Proposal is ${proposal.status}, not pending` },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -72,7 +69,7 @@ export async function POST(
   if (!multisig) {
     return NextResponse.json(
       { error: "Associated multisig not found" },
-      { status: 404 }
+      { status: 404 },
     );
   }
 
@@ -82,7 +79,7 @@ export async function POST(
   if (signerIndex < 0) {
     return NextResponse.json(
       { error: "You are not a signer on this multisig" },
-      { status: 403 }
+      { status: 403 },
     );
   }
 
@@ -90,14 +87,14 @@ export async function POST(
   const existing = await db.query.signerResponses.findFirst({
     where: and(
       eq(signerResponses.proposalId, id),
-      eq(signerResponses.signerIndex, signerIndex)
+      eq(signerResponses.signerIndex, signerIndex),
     ),
   });
 
   if (existing) {
     return NextResponse.json(
       { error: "You have already responded to this proposal" },
-      { status: 409 }
+      { status: 409 },
     );
   }
 

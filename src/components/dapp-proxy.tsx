@@ -1,12 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useWallet } from "@/components/wallet-provider";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { DappTxConfirmModal } from "@/components/dapp-tx-confirm-modal";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Sheet,
   SheetContent,
@@ -15,7 +15,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { DappTxConfirmModal } from "@/components/dapp-tx-confirm-modal";
+import { useWallet } from "@/components/wallet-provider";
 import type { AptosNetwork } from "@/lib/aptos/client";
 
 interface DappProxyProps {
@@ -53,7 +53,7 @@ export function DappProxy({
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingRequest, setPendingRequest] = useState<PendingRequest | null>(
-    null
+    null,
   );
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -75,7 +75,7 @@ export function DappProxy({
         result: error ? undefined : result,
         error,
       },
-      "*"
+      "*",
     );
   }
 
@@ -113,7 +113,7 @@ export function DappProxy({
           sendResponse(
             id,
             undefined,
-            "signMessage is not supported for multisig wallets"
+            "signMessage is not supported for multisig wallets",
           );
           break;
 
@@ -121,7 +121,7 @@ export function DappProxy({
           sendResponse(id, undefined, `Unsupported method: ${method}`);
       }
     },
-    [multisigAddress, network]
+    [multisigAddress, network, sendResponse],
   );
 
   useEffect(() => {
@@ -144,8 +144,7 @@ export function DappProxy({
         fnParts.length >= 2
           ? fnParts.slice(0, -2).join("::") || fnParts[0]
           : "0x1";
-      const moduleName =
-        fnParts.length >= 2 ? fnParts[fnParts.length - 2] : "";
+      const moduleName = fnParts.length >= 2 ? fnParts[fnParts.length - 2] : "";
       const functionName =
         fnParts.length >= 1 ? fnParts[fnParts.length - 1] : "";
 
@@ -176,7 +175,7 @@ export function DappProxy({
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify(body),
-        }
+        },
       );
 
       if (!res.ok) {
@@ -191,7 +190,7 @@ export function DappProxy({
         undefined,
         `Transaction captured as multisig proposal. ` +
           `It requires ${threshold}-of-${publicKeys.length} signatures before submission. ` +
-          `Redirecting to proposal page.`
+          `Redirecting to proposal page.`,
       );
 
       setConfirmOpen(false);
@@ -235,7 +234,8 @@ export function DappProxy({
               <SheetDescription>
                 Interact with dApps using your multisig wallet (
                 {multisigAddress.slice(0, 8)}...{multisigAddress.slice(-6)}).
-                Transactions become {threshold}-of-{publicKeys.length} proposals.
+                Transactions become {threshold}-of-{publicKeys.length}{" "}
+                proposals.
               </SheetDescription>
             </SheetHeader>
 

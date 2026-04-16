@@ -1,11 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
+import { and, eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { multisigs } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ address: string }> }
+  { params }: { params: Promise<{ address: string }> },
 ) {
   const { address } = await params;
   const { searchParams } = new URL(request.url);
@@ -16,10 +16,7 @@ export async function GET(
   });
 
   if (!multisig) {
-    return NextResponse.json(
-      { error: "Multisig not found" },
-      { status: 404 }
-    );
+    return NextResponse.json({ error: "Multisig not found" }, { status: 404 });
   }
 
   return NextResponse.json({

@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getAptosClient, type AptosNetwork } from "@/lib/aptos/client";
+import { type NextRequest, NextResponse } from "next/server";
+import { type AptosNetwork, getAptosClient } from "@/lib/aptos/client";
 
 /**
  * GET /api/multisig/lookup?address=0x...&network=mainnet
@@ -9,10 +9,14 @@ import { getAptosClient, type AptosNetwork } from "@/lib/aptos/client";
  */
 export async function GET(request: NextRequest) {
   const address = request.nextUrl.searchParams.get("address");
-  const network = (request.nextUrl.searchParams.get("network") ?? "mainnet") as AptosNetwork;
+  const network = (request.nextUrl.searchParams.get("network") ??
+    "mainnet") as AptosNetwork;
 
   if (!address) {
-    return NextResponse.json({ error: "Missing address parameter" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Missing address parameter" },
+      { status: 400 },
+    );
   }
 
   const aptos = getAptosClient(network);
@@ -26,8 +30,11 @@ export async function GET(request: NextRequest) {
 
     if (transactions.length === 0) {
       return NextResponse.json(
-        { error: "No transactions found for this account. The account must have sent at least one transaction to extract its public keys." },
-        { status: 404 }
+        {
+          error:
+            "No transactions found for this account. The account must have sent at least one transaction to extract its public keys.",
+        },
+        { status: 404 },
       );
     }
 
@@ -81,13 +88,16 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { error: "Could not find a MultiEd25519 signed transaction for this account. It may use a different authentication scheme." },
-      { status: 404 }
+      {
+        error:
+          "Could not find a MultiEd25519 signed transaction for this account. It may use a different authentication scheme.",
+      },
+      { status: 404 },
     );
   } catch (err) {
     return NextResponse.json(
       { error: `Lookup failed: ${(err as Error).message}` },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

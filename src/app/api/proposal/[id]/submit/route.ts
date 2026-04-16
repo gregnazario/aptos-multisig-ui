@@ -1,16 +1,16 @@
-import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
-import { proposals, signerResponses, multisigs } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { deriveMultisigAddress, combineSignatures } from "@/lib/aptos/multisig";
-import { submitMultisigTransaction } from "@/lib/aptos/transaction";
+import { type NextRequest, NextResponse } from "next/server";
 import type { AptosNetwork } from "@/lib/aptos/client";
+import { combineSignatures, deriveMultisigAddress } from "@/lib/aptos/multisig";
+import { submitMultisigTransaction } from "@/lib/aptos/transaction";
+import { db } from "@/lib/db";
+import { multisigs, proposals, signerResponses } from "@/lib/db/schema";
 import { getGasStationConfig, signAsFeePayer } from "@/lib/gas-station";
-import {stringify} from "@/lib/utils";
+import { stringify } from "@/lib/utils";
 
 export async function POST(
   _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
 
@@ -20,16 +20,13 @@ export async function POST(
   });
 
   if (!proposal) {
-    return NextResponse.json(
-      { error: "Proposal not found" },
-      { status: 404 }
-    );
+    return NextResponse.json({ error: "Proposal not found" }, { status: 404 });
   }
 
   if (proposal.status !== "ready") {
     return NextResponse.json(
       { error: `Proposal is ${proposal.status}, not ready for submission` },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -41,7 +38,7 @@ export async function POST(
   if (!multisig) {
     return NextResponse.json(
       { error: "Associated multisig not found" },
-      { status: 404 }
+      { status: 404 },
     );
   }
 
@@ -56,9 +53,7 @@ export async function POST(
       gasConfig.networks.includes(multisig.network as AptosNetwork)
     ) {
       try {
-        const feePayerSignature = signAsFeePayer(
-          proposal.rawTransactionBytes
-        );
+        const feePayerSignature = signAsFeePayer(proposal.rawTransactionBytes);
         await db
           .update(proposals)
           .set({ feePayerSignature, updatedAt: new Date() })
@@ -76,13 +71,13 @@ export async function POST(
     where: eq(signerResponses.proposalId, id),
   });
   const signedResponses = allResponses.filter(
-    (r) => r.response === "signed" && r.signature !== null
+    (r) => r.response === "signed" && r.signature !== null,
   );
 
   if (signedResponses.length < multisig.threshold) {
     return NextResponse.json(
       { error: "Not enough signatures to meet threshold" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -93,14 +88,14 @@ export async function POST(
     signedResponses.map((r) => ({
       signerIndex: r.signerIndex,
       signature: r.signature!,
-    }))
+    })),
   );
 
   // 5. Derive the MultiEd25519PublicKey
   const publicKeys: string[] = JSON.parse(multisig.publicKeys);
   const { multiPublicKey } = deriveMultisigAddress(
     publicKeys,
-    multisig.threshold
+    multisig.threshold,
   );
 
   // 6. Submit to chain
@@ -131,7 +126,7 @@ export async function POST(
 
     return NextResponse.json(
       { error: message, status: "failed" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

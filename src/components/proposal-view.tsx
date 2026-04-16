@@ -1,8 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
 import { useWallet as useAdapterWallet } from "@aptos-labs/wallet-adapter-react";
-import { useWallet } from "@/components/wallet-provider";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { SignerStatusGrid } from "@/components/signer-status-grid";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,6 +13,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
+import { useWallet } from "@/components/wallet-provider";
 
 interface ProposalPayload {
   module: string;
@@ -68,11 +68,11 @@ interface ProposalData {
 /** Client-safe signer index lookup (no SDK import) */
 function findSignerIndexClient(
   publicKeyHexes: string[],
-  signerPublicKeyHex: string
+  signerPublicKeyHex: string,
 ): number {
   const normalized = signerPublicKeyHex.toLowerCase().replace(/^0x/, "");
   return publicKeyHexes.findIndex(
-    (pk) => pk.toLowerCase().replace(/^0x/, "") === normalized
+    (pk) => pk.toLowerCase().replace(/^0x/, "") === normalized,
   );
 }
 
@@ -192,7 +192,7 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
       pollTimers.current.forEach(clearTimeout);
       pollTimers.current = [];
     };
-  }, [proposal?.status, proposalId, fetchProposal]);
+  }, [proposal?.status, proposalId, fetchProposal, proposal]);
 
   if (loading) {
     return (
@@ -210,7 +210,10 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
           This proposal doesn&apos;t exist or may have been removed. Check that
           the link is correct.
         </p>
-        <a href="/" className="text-sm underline text-muted-foreground hover:text-foreground">
+        <a
+          href="/"
+          className="text-sm underline text-muted-foreground hover:text-foreground"
+        >
           Back to home
         </a>
       </div>
@@ -228,7 +231,7 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
     proposal.responses.some(
       (r) =>
         r.publicKey.toLowerCase().replace(/^0x/, "") ===
-        publicKey.toLowerCase().replace(/^0x/, "")
+        publicKey.toLowerCase().replace(/^0x/, ""),
     );
   const networkMatches =
     walletNetwork?.toLowerCase() === proposal.multisig.network.toLowerCase();
@@ -248,15 +251,14 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
       const token = await verifyIdentity();
 
       // Deserialize the stored transaction bytes back into a SimpleTransaction
-      const {
-        SimpleTransaction,
-        Deserializer,
-      } = await import("@aptos-labs/ts-sdk");
+      const { SimpleTransaction, Deserializer } = await import(
+        "@aptos-labs/ts-sdk"
+      );
 
       // Convert hex string to Uint8Array (browser-safe, no Buffer)
       const hex = proposal.rawTransactionBytes.replace(/^0x/, "");
       const txBytes = new Uint8Array(
-        hex.match(/.{1,2}/g)!.map((byte) => parseInt(byte, 16))
+        hex.match(/.{1,2}/g)!.map((byte) => parseInt(byte, 16)),
       );
       const deserializer = new Deserializer(txBytes);
       const transaction = SimpleTransaction.deserialize(deserializer);
@@ -284,9 +286,15 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
       // The last 64 bytes of the BCS are always the raw Ed25519 signature
       const sigBytes = bcsBytes.slice(-64);
       if (sigBytes.length !== 64) {
-        throw new Error(`Expected 64-byte signature at end of authenticator BCS, got ${sigBytes.length}`);
+        throw new Error(
+          `Expected 64-byte signature at end of authenticator BCS, got ${sigBytes.length}`,
+        );
       }
-      const sigHex = "0x" + Array.from(sigBytes).map((b: number) => b.toString(16).padStart(2, "0")).join("");
+      const sigHex =
+        "0x" +
+        Array.from(sigBytes)
+          .map((b: number) => b.toString(16).padStart(2, "0"))
+          .join("");
 
       const res = await fetch(`/api/proposal/${proposalId}/sign`, {
         method: "POST",
@@ -359,9 +367,7 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
 
       await fetchProposal();
     } catch (err) {
-      setSubmitError(
-        err instanceof Error ? err.message : "Submission failed"
-      );
+      setSubmitError(err instanceof Error ? err.message : "Submission failed");
     } finally {
       setSubmitting(false);
     }
@@ -392,12 +398,12 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
   }
 
   const signedCount = proposal.responses.filter(
-    (r) => r.response === "signed"
+    (r) => r.response === "signed",
   ).length;
 
   const payload = proposal.payload;
   const expirationDate = new Date(
-    proposal.expirationTimestampSecs * 1000
+    proposal.expirationTimestampSecs * 1000,
   ).toLocaleString();
 
   return (
@@ -411,7 +417,7 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
               {getSourceBadge(proposal.source)}
               {getStatusBadge(
                 proposal.status,
-                proposal.expirationTimestampSecs
+                proposal.expirationTimestampSecs,
               )}
             </div>
           </div>
@@ -478,8 +484,12 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
           )}
           {proposal.failureReason && (
             <div>
-              <span className="font-medium text-destructive">Failure Reason: </span>
-              <span className="text-xs text-destructive">{proposal.failureReason}</span>
+              <span className="font-medium text-destructive">
+                Failure Reason:{" "}
+              </span>
+              <span className="text-xs text-destructive">
+                {proposal.failureReason}
+              </span>
             </div>
           )}
         </CardContent>
@@ -579,23 +589,25 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
       )}
 
       {/* Cancel button — any signer can cancel a pending or ready proposal */}
-      {connected && isSigner && (proposal.status === "pending" || proposal.status === "ready") && (
-        <Card>
-          <CardContent className="pt-6 flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">
-              Any signer can cancel this proposal.
-            </p>
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={handleCancel}
-              disabled={cancelling}
-            >
-              {cancelling ? "Cancelling..." : "Cancel Proposal"}
-            </Button>
-          </CardContent>
-        </Card>
-      )}
+      {connected &&
+        isSigner &&
+        (proposal.status === "pending" || proposal.status === "ready") && (
+          <Card>
+            <CardContent className="pt-6 flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">
+                Any signer can cancel this proposal.
+              </p>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleCancel}
+                disabled={cancelling}
+              >
+                {cancelling ? "Cancelling..." : "Cancel Proposal"}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
       {/* Not connected message */}
       {!connected && (
@@ -612,12 +624,16 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
       <div className="flex gap-3 pt-2">
         <Button
           variant="outline"
-          onClick={() => window.location.href = `/multisig/${proposal.multisig.address}?network=${proposal.multisig.network}`}
+          onClick={() =>
+            (window.location.href = `/multisig/${proposal.multisig.address}?network=${proposal.multisig.network}`)
+          }
         >
           Back to Dashboard
         </Button>
         <Button
-          onClick={() => window.location.href = `/multisig/${proposal.multisig.address}/propose?network=${proposal.multisig.network}`}
+          onClick={() =>
+            (window.location.href = `/multisig/${proposal.multisig.address}/propose?network=${proposal.multisig.network}`)
+          }
         >
           New Proposal
         </Button>

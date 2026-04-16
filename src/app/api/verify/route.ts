@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
 import { Ed25519PublicKey, Ed25519Signature } from "@aptos-labs/ts-sdk";
+import { type NextRequest, NextResponse } from "next/server";
 import { createSessionToken } from "@/lib/auth/session";
 
 const usedNonces = new Set<string>();
@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
   if (!fullMessage.includes("Multisig Verification")) {
     return NextResponse.json(
       { error: "Invalid message format" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -28,15 +28,12 @@ export async function POST(request: NextRequest) {
       signature: sig,
     });
     if (!isValid) {
-      return NextResponse.json(
-        { error: "Invalid signature" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
     }
   } catch {
     return NextResponse.json(
       { error: "Signature verification failed" },
-      { status: 401 }
+      { status: 401 },
     );
   }
 

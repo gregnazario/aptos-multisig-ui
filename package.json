@@ -6,7 +6,9 @@
     "dev": "next dev --port 3123",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
+    "lint": "biome check src/",
+    "lint:fix": "biome check --fix src/",
+    "format": "biome format --write src/",
     "test": "vitest run",
     "test:watch": "vitest"
   },
@@ -32,6 +34,7 @@
     "uuid": "^13.0.0"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.4.12",
     "@tailwindcss/postcss": "^4",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20",

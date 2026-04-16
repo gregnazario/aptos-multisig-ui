@@ -1,15 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { useEffect, useState } from "react";
 import { SignerStatusGrid } from "@/components/signer-status-grid";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { AptosNetwork } from "@/lib/aptos/client";
 
 interface SignerResponse {
@@ -70,7 +65,7 @@ function getEffectiveStatus(proposal: Proposal): string {
 }
 
 function statusVariant(
-  status: string
+  status: string,
 ): "default" | "secondary" | "destructive" | "outline" {
   switch (status) {
     case "ready":
@@ -99,7 +94,7 @@ export function ProposalList({
     async function fetchProposals() {
       try {
         const res = await fetch(
-          `/api/multisig/${address}/proposals?network=${network}`
+          `/api/multisig/${address}/proposals?network=${network}`,
         );
         if (!res.ok) {
           throw new Error("Failed to fetch proposals");
@@ -140,11 +135,7 @@ export function ProposalList({
         const entryFunction = `${proposal.payload.module}::${proposal.payload.function}`;
 
         return (
-          <Link
-            key={proposal.id}
-            href={`/tx/${proposal.id}`}
-            className="block"
-          >
+          <Link key={proposal.id} href={`/tx/${proposal.id}`} className="block">
             <Card className="hover:border-primary/50 transition-colors">
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between gap-2">
@@ -155,9 +146,7 @@ export function ProposalList({
                     <Badge variant={statusVariant(effectiveStatus)}>
                       {effectiveStatus}
                     </Badge>
-                    <Badge variant="outline">
-                      #{proposal.sequenceNumber}
-                    </Badge>
+                    <Badge variant="outline">#{proposal.sequenceNumber}</Badge>
                     {proposal.source === "dapp" && (
                       <Badge variant="secondary">dApp</Badge>
                     )}

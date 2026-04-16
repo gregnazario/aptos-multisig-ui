@@ -1,7 +1,6 @@
 "use client";
 
 import { useWallet as useAdapterWallet } from "@aptos-labs/wallet-adapter-react";
-import { useWallet } from "@/components/wallet-provider";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -9,6 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useWallet } from "@/components/wallet-provider";
 
 export function ConnectWalletButton() {
   const adapter = useAdapterWallet();

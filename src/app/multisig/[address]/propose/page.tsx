@@ -1,9 +1,9 @@
+import { and, eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
-import { db } from "@/lib/db";
-import { multisigs } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
 import { ProposalBuilder } from "@/components/proposal-builder";
 import type { AptosNetwork } from "@/lib/aptos/client";
+import { db } from "@/lib/db";
+import { multisigs } from "@/lib/db/schema";
 
 interface Props {
   params: Promise<{ address: string }>;
@@ -16,10 +16,7 @@ export default async function ProposePage({ params, searchParams }: Props) {
   const network = (networkParam ?? "mainnet") as AptosNetwork;
 
   const multisig = await db.query.multisigs.findFirst({
-    where: and(
-      eq(multisigs.address, address),
-      eq(multisigs.network, network)
-    ),
+    where: and(eq(multisigs.address, address), eq(multisigs.network, network)),
   });
 
   if (!multisig) {

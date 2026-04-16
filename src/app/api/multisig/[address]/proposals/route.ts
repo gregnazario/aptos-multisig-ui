@@ -1,16 +1,16 @@
-import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
-import { multisigs, proposals, signerResponses } from "@/lib/db/schema";
-import { eq, and, desc } from "drizzle-orm";
-import { buildTransaction } from "@/lib/aptos/transaction";
-import { verifySessionToken } from "@/lib/auth/session";
-import { findSignerIndex } from "@/lib/aptos/multisig";
+import { and, desc, eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 import { v4 as uuid } from "uuid";
 import type { AptosNetwork } from "@/lib/aptos/client";
+import { findSignerIndex } from "@/lib/aptos/multisig";
+import { buildTransaction } from "@/lib/aptos/transaction";
+import { verifySessionToken } from "@/lib/auth/session";
+import { db } from "@/lib/db";
+import { multisigs, proposals, signerResponses } from "@/lib/db/schema";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ address: string }> }
+  { params }: { params: Promise<{ address: string }> },
 ) {
   const { address } = await params;
   const { searchParams } = new URL(request.url);
@@ -22,10 +22,7 @@ export async function GET(
   });
 
   if (!multisig) {
-    return NextResponse.json(
-      { error: "Multisig not found" },
-      { status: 404 }
-    );
+    return NextResponse.json({ error: "Multisig not found" }, { status: 404 });
   }
 
   // Fetch all proposals for this multisig, ordered by createdAt desc
@@ -41,8 +38,12 @@ export async function GET(
         where: eq(signerResponses.proposalId, proposal.id),
       });
 
-      const signedCount = responses.filter((r) => r.response === "signed").length;
-      const declinedCount = responses.filter((r) => r.response === "declined").length;
+      const signedCount = responses.filter(
+        (r) => r.response === "signed",
+      ).length;
+      const declinedCount = responses.filter(
+        (r) => r.response === "declined",
+      ).length;
 
       return {
         ...proposal,
@@ -51,7 +52,7 @@ export async function GET(
         signedCount,
         declinedCount,
       };
-    })
+    }),
   );
 
   return NextResponse.json(enrichedProposals);
@@ -59,7 +60,7 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ address: string }> }
+  { params }: { params: Promise<{ address: string }> },
 ) {
   const { address } = await params;
 
@@ -68,7 +69,7 @@ export async function POST(
   if (!authHeader?.startsWith("Bearer ")) {
     return NextResponse.json(
       { error: "Missing or invalid Authorization header" },
-      { status: 401 }
+      { status: 401 },
     );
   }
 
@@ -76,7 +77,10 @@ export async function POST(
   try {
     session = await verifySessionToken(authHeader.slice(7));
   } catch {
-    return NextResponse.json({ error: "Invalid session token" }, { status: 401 });
+    return NextResponse.json(
+      { error: "Invalid session token" },
+      { status: 401 },
+    );
   }
 
   const body = await request.json();
@@ -96,7 +100,7 @@ export async function POST(
   if (!network || !description || !payload) {
     return NextResponse.json(
       { error: "Missing required fields: network, description, payload" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -106,10 +110,7 @@ export async function POST(
   });
 
   if (!multisig) {
-    return NextResponse.json(
-      { error: "Multisig not found" },
-      { status: 404 }
-    );
+    return NextResponse.json({ error: "Multisig not found" }, { status: 404 });
   }
 
   // Verify session's publicKey is in the multisig's signer list
@@ -118,7 +119,7 @@ export async function POST(
   if (signerIndex === -1) {
     return NextResponse.json(
       { error: "You are not a signer of this multisig" },
-      { status: 403 }
+      { status: 403 },
     );
   }
 
@@ -135,7 +136,8 @@ export async function POST(
       network: network as AptosNetwork,
     });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Transaction build failed";
+    const message =
+      err instanceof Error ? err.message : "Transaction build failed";
     return NextResponse.json({ error: message }, { status: 400 });
   }
 

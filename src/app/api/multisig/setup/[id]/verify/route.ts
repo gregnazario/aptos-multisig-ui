@@ -1,22 +1,18 @@
-import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
 import {
-  multisigSetups,
-  setupVerifications,
-  multisigs,
-} from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
-import { v4 as uuid } from "uuid";
-import {
+  AuthenticationKey,
   Ed25519PublicKey,
   Ed25519Signature,
-  AuthenticationKey,
 } from "@aptos-labs/ts-sdk";
+import { eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
+import { v4 as uuid } from "uuid";
 import { deriveMultisigAddress } from "@/lib/aptos/multisig";
+import { db } from "@/lib/db";
+import { multisigSetups, multisigs, setupVerifications } from "@/lib/db/schema";
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
 
@@ -37,8 +33,11 @@ export async function POST(
 
   if (!address || !publicKey || !signature || !fullMessage || !nonce) {
     return NextResponse.json(
-      { error: "address, publicKey, signature, fullMessage, and nonce are all required" },
-      { status: 400 }
+      {
+        error:
+          "address, publicKey, signature, fullMessage, and nonce are all required",
+      },
+      { status: 400 },
     );
   }
 
@@ -54,19 +53,19 @@ export async function POST(
   if (setup.status !== "pending") {
     return NextResponse.json(
       { error: "Setup is already complete" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
   // 2. Address is in the setup's address list
   const addresses: string[] = JSON.parse(setup.addresses);
   const addressMatch = addresses.find(
-    (a) => a.toLowerCase() === address.toLowerCase()
+    (a) => a.toLowerCase() === address.toLowerCase(),
   );
   if (!addressMatch) {
     return NextResponse.json(
       { error: "Address is not part of this multisig setup" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -76,12 +75,12 @@ export async function POST(
   });
 
   const alreadyVerified = existingVerifications.some(
-    (v) => v.address.toLowerCase() === address.toLowerCase()
+    (v) => v.address.toLowerCase() === address.toLowerCase(),
   );
   if (alreadyVerified) {
     return NextResponse.json(
       { error: "Address has already been verified" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -90,17 +89,17 @@ export async function POST(
     const pubKey = new Ed25519PublicKey(publicKey);
     const sig = new Ed25519Signature(signature);
     const messageBytes = new TextEncoder().encode(fullMessage);
-    const isValid = pubKey.verifySignature({ message: messageBytes, signature: sig });
+    const isValid = pubKey.verifySignature({
+      message: messageBytes,
+      signature: sig,
+    });
     if (!isValid) {
-      return NextResponse.json(
-        { error: "Invalid signature" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
     }
   } catch (err) {
     return NextResponse.json(
       { error: `Signature verification failed: ${(err as Error).message}` },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -112,13 +111,13 @@ export async function POST(
     if (derivedAddress.toLowerCase() !== address.toLowerCase()) {
       return NextResponse.json(
         { error: "Public key does not match the claimed address" },
-        { status: 400 }
+        { status: 400 },
       );
     }
   } catch (err) {
     return NextResponse.json(
       { error: `Address derivation failed: ${(err as Error).message}` },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -139,14 +138,16 @@ export async function POST(
   });
 
   const allVerified = addresses.every((addr) =>
-    allVerifications.some((v) => v.address.toLowerCase() === addr.toLowerCase())
+    allVerifications.some(
+      (v) => v.address.toLowerCase() === addr.toLowerCase(),
+    ),
   );
 
   if (allVerified) {
     // Collect public keys in address order
     const publicKeysInOrder = addresses.map((addr) => {
       const v = allVerifications.find(
-        (ver) => ver.address.toLowerCase() === addr.toLowerCase()
+        (ver) => ver.address.toLowerCase() === addr.toLowerCase(),
       );
       return v!.publicKey;
     });
@@ -154,7 +155,7 @@ export async function POST(
     // Derive multisig address
     const { address: multisigAddress } = deriveMultisigAddress(
       publicKeysInOrder,
-      setup.threshold
+      setup.threshold,
     );
 
     // Create the multisig record

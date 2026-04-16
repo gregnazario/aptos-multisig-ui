@@ -1,19 +1,14 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useWallet } from "@/components/wallet-provider";
+import { useState } from "react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useWallet } from "@/components/wallet-provider";
 import type { AptosNetwork } from "@/lib/aptos/client";
 
 interface ProposalBuilderProps {
@@ -61,7 +56,7 @@ export function ProposalBuilder({
       }
       if (!moduleAddress.trim() || !moduleName.trim() || !functionName.trim()) {
         throw new Error(
-          "Module address, module name, and function name are required."
+          "Module address, module name, and function name are required.",
         );
       }
 
@@ -105,7 +100,7 @@ export function ProposalBuilder({
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify(body),
-        }
+        },
       );
 
       if (!res.ok) {
@@ -171,9 +166,7 @@ export function ProposalBuilder({
           </p>
 
           <div className="flex gap-3">
-            <Button onClick={() => router.push(txPath)}>
-              Open Proposal
-            </Button>
+            <Button onClick={() => router.push(txPath)}>Open Proposal</Button>
             <Button
               variant="outline"
               onClick={() => {
@@ -257,7 +250,9 @@ export function ProposalBuilder({
               <div className="space-y-2">
                 <Label htmlFor="typeArgs">
                   Type Arguments{" "}
-                  <span className="text-muted-foreground">(comma-separated, optional)</span>
+                  <span className="text-muted-foreground">
+                    (comma-separated, optional)
+                  </span>
                 </Label>
                 <Input
                   id="typeArgs"
@@ -270,7 +265,9 @@ export function ProposalBuilder({
               <div className="space-y-2">
                 <Label htmlFor="functionArgs">
                   Function Arguments{" "}
-                  <span className="text-muted-foreground">(comma-separated)</span>
+                  <span className="text-muted-foreground">
+                    (comma-separated)
+                  </span>
                 </Label>
                 <Input
                   id="functionArgs"

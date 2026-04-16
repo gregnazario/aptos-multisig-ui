@@ -1,12 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
-import { proposals, multisigs } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import {
-  getGasStationConfig,
-  signAsFeePayer,
-} from "@/lib/gas-station";
+import { type NextRequest, NextResponse } from "next/server";
 import type { AptosNetwork } from "@/lib/aptos/client";
+import { db } from "@/lib/db";
+import { multisigs, proposals } from "@/lib/db/schema";
+import { getGasStationConfig, signAsFeePayer } from "@/lib/gas-station";
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
@@ -15,7 +12,7 @@ export async function POST(request: NextRequest) {
   if (!proposalId || typeof proposalId !== "string") {
     return NextResponse.json(
       { error: "proposalId is required" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -23,7 +20,7 @@ export async function POST(request: NextRequest) {
   if (!config.enabled) {
     return NextResponse.json(
       { error: "Gas station is not enabled" },
-      { status: 503 }
+      { status: 503 },
     );
   }
 
@@ -33,27 +30,23 @@ export async function POST(request: NextRequest) {
   });
 
   if (!proposal) {
-    return NextResponse.json(
-      { error: "Proposal not found" },
-      { status: 404 }
-    );
+    return NextResponse.json({ error: "Proposal not found" }, { status: 404 });
   }
 
   // Validate the proposal's fee_payer_address matches the gas station address
   if (!proposal.feePayerAddress) {
     return NextResponse.json(
       { error: "Proposal does not have a fee payer address" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
   if (
-    proposal.feePayerAddress.toLowerCase() !==
-    config.address?.toLowerCase()
+    proposal.feePayerAddress.toLowerCase() !== config.address?.toLowerCase()
   ) {
     return NextResponse.json(
       { error: "Fee payer address does not match gas station" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -65,7 +58,7 @@ export async function POST(request: NextRequest) {
   if (!multisig) {
     return NextResponse.json(
       { error: "Associated multisig not found" },
-      { status: 404 }
+      { status: 404 },
     );
   }
 
@@ -73,7 +66,7 @@ export async function POST(request: NextRequest) {
   if (!config.networks.includes(network)) {
     return NextResponse.json(
       { error: `Gas station does not support network: ${network}` },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -83,7 +76,7 @@ export async function POST(request: NextRequest) {
       {
         error: `Max gas ${proposal.maxGasAmount} exceeds gas station cap of ${config.maxGasPerTx}`,
       },
-      { status: 400 }
+      { status: 400 },
     );
   }
 

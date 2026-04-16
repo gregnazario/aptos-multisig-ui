@@ -1,11 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
+import { eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { multisigs, proposals, signerResponses } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
 
 export async function GET(
   _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
 
@@ -14,10 +14,7 @@ export async function GET(
   });
 
   if (!proposal) {
-    return NextResponse.json(
-      { error: "Proposal not found" },
-      { status: 404 }
-    );
+    return NextResponse.json({ error: "Proposal not found" }, { status: 404 });
   }
 
   const multisig = await db.query.multisigs.findFirst({
@@ -27,7 +24,7 @@ export async function GET(
   if (!multisig) {
     return NextResponse.json(
       { error: "Associated multisig not found" },
-      { status: 404 }
+      { status: 404 },
     );
   }
 
