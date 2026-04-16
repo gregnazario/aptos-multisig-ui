@@ -5,7 +5,6 @@ import type { AptosNetwork } from "@/lib/aptos/client";
 import { findSignerIndex } from "@/lib/aptos/multisig";
 import { buildTransaction } from "@/lib/aptos/transaction";
 import { verifySessionToken } from "@/lib/auth/session";
-import { verifySigner } from "@/lib/auth/verify-signer";
 import { db } from "@/lib/db";
 import { multisigs, proposals, signerResponses } from "@/lib/db/schema";
 
@@ -25,15 +24,6 @@ export async function GET(
   if (!multisig) {
     return NextResponse.json({ error: "Multisig not found" }, { status: 404 });
   }
-
-  const publicKeys: string[] = JSON.parse(multisig.publicKeys);
-
-  // Only signers can view proposals
-  const auth = await verifySigner(
-    request.headers.get("authorization"),
-    publicKeys,
-  );
-  if (!auth.ok) return auth.response;
 
   // Fetch all proposals for this multisig, ordered by createdAt desc
   const allProposals = await db.query.proposals.findMany({

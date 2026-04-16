@@ -1,23 +1,14 @@
-"use client";
-
+import { and, eq } from "drizzle-orm";
 import Link from "next/link";
-import { use, useCallback, useEffect, useState } from "react";
+import { notFound } from "next/navigation";
 import { ProposalList } from "@/components/proposal-list";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useWallet } from "@/components/wallet-provider";
 import type { AptosNetwork } from "@/lib/aptos/client";
+import { db } from "@/lib/db";
+import { multisigs } from "@/lib/db/schema";
 import { cn } from "@/lib/utils";
-
-interface MultisigData {
-  id: string;
-  address: string;
-  publicKeys: string[];
-  threshold: number;
-  network: string;
-  label: string | null;
-}
 
 interface Props {
   params: Promise<{ address: string }>;
@@ -29,82 +20,23 @@ function truncateKey(key: string): string {
   return `${key.slice(0, 10)}...${key.slice(-8)}`;
 }
 
-export default function MultisigDashboardPage({
+export default async function MultisigDashboardPage({
   params,
   searchParams,
 }: Props) {
-  const { address } = use(params);
-  const { network: networkParam } = use(searchParams);
+  const { address } = await params;
+  const { network: networkParam } = await searchParams;
   const network = (networkParam ?? "mainnet") as AptosNetwork;
 
-  const { connected, verifyIdentity } = useWallet();
-  const [multisig, setMultisig] = useState<MultisigData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const multisig = await db.query.multisigs.findFirst({
+    where: and(eq(multisigs.address, address), eq(multisigs.network, network)),
+  });
 
-  const fetchMultisig = useCallback(async () => {
-    try {
-      const token = await verifyIdentity();
-      const res = await fetch(
-        `/api/multisig/${address}?network=${network}`,
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        setError(err.error ?? "Failed to load multisig");
-        return;
-      }
-      setMultisig(await res.json());
-      setError(null);
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to load multisig",
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [address, network, verifyIdentity]);
-
-  useEffect(() => {
-    if (connected) fetchMultisig();
-  }, [connected, fetchMultisig]);
-
-  if (!connected) {
-    return (
-      <div className="max-w-md mx-auto py-16 text-center space-y-4">
-        <h2 className="text-2xl font-bold">Connect Wallet</h2>
-        <p className="text-muted-foreground">
-          Connect your wallet to view this multisig. Only signers can access
-          multisig details.
-        </p>
-      </div>
-    );
+  if (!multisig) {
+    notFound();
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-16">
-        <p className="text-muted-foreground">Loading multisig...</p>
-      </div>
-    );
-  }
-
-  if (error || !multisig) {
-    return (
-      <div className="max-w-md mx-auto py-16 text-center space-y-4">
-        <h2 className="text-2xl font-bold">Access Denied</h2>
-        <p className="text-muted-foreground">
-          {error ?? "Multisig not found"}
-        </p>
-        <a
-          href="/"
-          className="text-sm underline text-muted-foreground hover:text-foreground"
-        >
-          Back to home
-        </a>
-      </div>
-    );
-  }
+  const publicKeys: string[] = JSON.parse(multisig.publicKeys);
 
   return (
     <div className="max-w-3xl mx-auto w-full space-y-6 px-4 py-8">
@@ -120,7 +52,7 @@ export default function MultisigDashboardPage({
           {multisig.address}
         </p>
         <p className="text-sm text-muted-foreground">
-          Threshold: {multisig.threshold}-of-{multisig.publicKeys.length}
+          Threshold: {multisig.threshold}-of-{publicKeys.length}
         </p>
       </div>
 
@@ -147,7 +79,7 @@ export default function MultisigDashboardPage({
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
-            {multisig.publicKeys.map((key, index) => (
+            {publicKeys.map((key, index) => (
               <div key={key} className="flex items-center gap-2 text-sm">
                 <span className="text-muted-foreground w-6 text-right">
                   {index}
@@ -166,7 +98,7 @@ export default function MultisigDashboardPage({
           address={address}
           network={network}
           threshold={multisig.threshold}
-          publicKeys={multisig.publicKeys}
+          publicKeys={publicKeys}
         />
       </div>
     </div>
