@@ -288,7 +288,7 @@ async function handleProxyResponse(
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ path: string[] }> },
+  { params }: { params: Promise<{ path?: string[] }> },
 ) {
   const { path } = await params;
   const origin = request.nextUrl.searchParams.get("origin");
@@ -300,7 +300,7 @@ export async function GET(
     );
   }
 
-  const targetUrl = buildTargetUrl(path, origin, request.nextUrl.searchParams);
+  const targetUrl = buildTargetUrl(path ?? [], origin, request.nextUrl.searchParams);
   const isInitialPage = !path || path.length === 0 || path[0] === "";
 
   try {
@@ -316,7 +316,7 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ path: string[] }> },
+  { params }: { params: Promise<{ path?: string[] }> },
 ) {
   const { path } = await params;
   const origin = request.nextUrl.searchParams.get("origin");
@@ -328,7 +328,7 @@ export async function POST(
     );
   }
 
-  const targetUrl = buildTargetUrl(path, origin, request.nextUrl.searchParams);
+  const targetUrl = buildTargetUrl(path ?? [], origin, request.nextUrl.searchParams);
 
   try {
     const body = await request.arrayBuffer();
