@@ -136,7 +136,10 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
 
   const fetchProposal = useCallback(async () => {
     try {
-      const res = await fetch(`/api/proposal/${proposalId}`);
+      const token = await verifyIdentity();
+      const res = await fetch(`/api/proposal/${proposalId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (!res.ok) {
         const err = await res.json();
         setError(err.error ?? "Failed to load proposal");
@@ -150,7 +153,7 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
     } finally {
       setLoading(false);
     }
-  }, [proposalId]);
+  }, [proposalId, verifyIdentity]);
 
   useEffect(() => {
     fetchProposal();
