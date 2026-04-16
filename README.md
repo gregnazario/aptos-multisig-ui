@@ -77,6 +77,10 @@ GAS_STATION_ENABLED=false
 GAS_STATION_PRIVATE_KEY=
 GAS_STATION_MAX_GAS_PER_TX=10000
 GAS_STATION_NETWORKS=devnet,testnet
+
+# Split deployment (optional) — see "Split Deployment" section below
+# BACKEND_URL=https://api.example.com
+# CORS_ORIGIN=https://app.example.com
 ```
 
 ## Usage
@@ -162,6 +166,43 @@ GAS_STATION_NETWORKS=devnet,testnet
 ```
 
 When a proposal specifies the gas station's address as the fee payer, it auto-signs during submission.
+
+## Split Deployment
+
+The frontend and backend can run on separate machines. The same Next.js app is deployed to both — the only difference is environment variables.
+
+### Single machine (default)
+
+Everything runs together. No extra configuration needed.
+
+### Split: Frontend + Backend
+
+**Backend (VPS with SQLite):**
+```env
+DATABASE_URL=file:/data/multisig.db
+JWT_SECRET=your-production-secret
+CORS_ORIGIN=https://app.example.com
+```
+
+```bash
+pnpm build && pnpm start
+```
+
+**Frontend (Vercel or another host):**
+```env
+BACKEND_URL=https://api.example.com
+JWT_SECRET=your-production-secret  # must match backend
+```
+
+```bash
+pnpm build && pnpm start
+```
+
+When `BACKEND_URL` is set, Next.js rewrites proxy all `/api/*` requests to the backend server. The frontend needs no database. When `CORS_ORIGIN` is set on the backend, middleware adds the appropriate CORS headers.
+
+### URL mode (no backend at all)
+
+With URL-based proposals, the frontend can work entirely without a backend for the core signing flow. The only server-side call is `/api/multisig/build-tx` to serialize the transaction (which only needs an Aptos RPC connection, no database).
 
 ## Scripts
 
