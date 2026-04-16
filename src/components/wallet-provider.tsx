@@ -140,7 +140,6 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     <AptosWalletAdapterProvider
       autoConnect={true}
       dappConfig={{ network: networkToEnum[network] }}
-      optInWallets={["Petra"]}
       onError={(error) => console.error("Wallet adapter error:", error)}
     >
       <MultisigWalletInner initialNetwork={network}>

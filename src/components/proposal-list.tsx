@@ -5,7 +5,6 @@ import { useEffect, useState } from "react";
 import { SignerStatusGrid } from "@/components/signer-status-grid";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useWallet } from "@/components/wallet-provider";
 import type { AptosNetwork } from "@/lib/aptos/client";
 
 interface SignerResponse {
@@ -87,7 +86,6 @@ export function ProposalList({
   threshold,
   publicKeys,
 }: ProposalListProps) {
-  const { verifyIdentity } = useWallet();
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -95,14 +93,11 @@ export function ProposalList({
   useEffect(() => {
     async function fetchProposals() {
       try {
-        const token = await verifyIdentity();
         const res = await fetch(
           `/api/multisig/${address}/proposals?network=${network}`,
-          { headers: { Authorization: `Bearer ${token}` } },
         );
         if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          throw new Error(err.error ?? "Failed to fetch proposals");
+          throw new Error("Failed to fetch proposals");
         }
         const data = await res.json();
         setProposals(data);
