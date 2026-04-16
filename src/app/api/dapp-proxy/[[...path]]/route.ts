@@ -72,11 +72,13 @@ function buildWalletInjectScript(dappOrigin: string): string {
   }
 
   // ── Legacy window.aptos override ────────────────────────────────────
+  // Use a getter so our wallet is always returned even if Petra extension
+  // tries to overwrite window.aptos. We store the multisig wallet and
+  // intercept all reads. configurable:true so Petra's defineProperty doesn't throw.
   var accountChangeCallbacks = [];
   var networkChangeCallbacks = [];
 
-  Object.defineProperty(window, "aptos", {
-    value: {
+  var multisigAptos = {
       connect: function() { return sendToParent("connect", {}); },
       disconnect: function() { return sendToParent("disconnect", {}); },
       account: function() { return sendToParent("account", {}); },
@@ -87,9 +89,15 @@ function buildWalletInjectScript(dappOrigin: string): string {
       onAccountChange: function(cb) { accountChangeCallbacks.push(cb); },
       onNetworkChange: function(cb) { networkChangeCallbacks.push(cb); },
       isConnected: function() { return sendToParent("isConnected", {}); },
-    },
-    writable: false,
-    configurable: false,
+  };
+
+  // Use a getter that always returns our multisig wallet, even if Petra's
+  // extension (inpage.js) overwrites window.aptos. configurable:true lets
+  // Petra's defineProperty succeed without throwing, but our getter wins.
+  Object.defineProperty(window, "aptos", {
+    get: function() { return multisigAptos; },
+    set: function() { /* swallow Petra's write silently */ },
+    configurable: true,
   });
 
   // ── AIP-62 Wallet Standard registration ─────────────────────────────
