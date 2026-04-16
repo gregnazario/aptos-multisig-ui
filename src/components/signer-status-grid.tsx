@@ -3,14 +3,10 @@
 import { Badge } from "@/components/ui/badge";
 
 interface SignerResponse {
-  id: string;
-  proposalId: string;
   signerIndex: number;
   publicKey: string;
   response: string;
-  signature: string | null;
-  declineReason: string | null;
-  createdAt: string;
+  declineReason?: string | null;
 }
 
 interface SignerStatusGridProps {

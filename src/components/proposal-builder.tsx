@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -10,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useWallet } from "@/components/wallet-provider";
 import type { AptosNetwork } from "@/lib/aptos/client";
+import { type UrlProposalData, encodeProposalUrl } from "@/lib/url-state";
 
 interface ProposalBuilderProps {
   multisigAddress: string;
@@ -24,8 +24,7 @@ export function ProposalBuilder({
   threshold,
   publicKeys,
 }: ProposalBuilderProps) {
-  const { connected, verifyIdentity } = useWallet();
-  const router = useRouter();
+  const { connected } = useWallet();
 
   const [description, setDescription] = useState("");
   const [moduleAddress, setModuleAddress] = useState("0x1");
@@ -60,10 +59,6 @@ export function ProposalBuilder({
         );
       }
 
-      // Get session token via wallet signature
-      const token = await verifyIdentity();
-
-      // Build the payload
       const payload = {
         module: `${moduleAddress.trim()}::${moduleName.trim()}`,
         function: functionName.trim(),
@@ -77,39 +72,46 @@ export function ProposalBuilder({
           .filter(Boolean),
       };
 
-      const body: Record<string, unknown> = {
-        network,
-        description: description.trim(),
-        payload,
-        maxGasAmount: maxGas,
-        gasUnitPrice: gasPrice,
-        expirationSeconds: expirationHours * 3600,
-        source: "manual",
-      };
-
-      if (feePayerAddress.trim()) {
-        body.feePayerAddress = feePayerAddress.trim();
-      }
-
-      const res = await fetch(
-        `/api/multisig/${encodeURIComponent(multisigAddress)}/proposals`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(body),
-        },
-      );
+      // Build the transaction server-side (just serialization, no DB storage)
+      const res = await fetch("/api/multisig/build-tx", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          multisigAddress,
+          network,
+          payload,
+          maxGasAmount: maxGas,
+          gasUnitPrice: gasPrice,
+          expirationSeconds: expirationHours * 3600,
+          feePayerAddress: feePayerAddress.trim() || undefined,
+        }),
+      });
 
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error ?? "Failed to create proposal");
+        throw new Error(data.error ?? "Failed to build transaction");
       }
 
-      const data = await res.json();
-      const fullUrl = `${window.location.origin}${data.url}`;
+      const built = await res.json();
+
+      // Encode everything into a URL — no database needed
+      const urlData: UrlProposalData = {
+        pks: publicKeys,
+        th: threshold,
+        net: network,
+        tx: built.rawTransactionBytes,
+        desc: description.trim(),
+        fn: `${moduleAddress.trim()}::${moduleName.trim()}::${functionName.trim()}`,
+        args: payload.args.length > 0 ? payload.args : undefined,
+        seq: built.sequenceNumber,
+        exp: built.expirationTimestampSecs,
+        gas: built.maxGasAmount,
+        gasPrice: built.gasUnitPrice,
+        sigs: [],
+      };
+
+      const urlPath = encodeProposalUrl(urlData);
+      const fullUrl = `${window.location.origin}${urlPath}`;
       setSuccessUrl(fullUrl);
     } catch (err: unknown) {
       const message =
@@ -142,8 +144,9 @@ export function ProposalBuilder({
         <CardContent className="space-y-4">
           <Alert>
             <AlertDescription>
-              Your proposal has been created successfully. Share the link below
-              with other signers to collect signatures.
+              Share this link with signers. All proposal data is encoded in the
+              URL — no server storage needed. Each signer opens the link, signs,
+              and gets an updated URL with their signature to pass along.
             </AlertDescription>
           </Alert>
 
@@ -166,7 +169,9 @@ export function ProposalBuilder({
           </p>
 
           <div className="flex gap-3">
-            <Button onClick={() => router.push(txPath)}>Open Proposal</Button>
+            <Button onClick={() => (window.location.href = txPath)}>
+              Open Proposal
+            </Button>
             <Button
               variant="outline"
               onClick={() => {
