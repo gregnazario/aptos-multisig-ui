@@ -1,0 +1,5 @@
+allowBuilds:
+  better-sqlite3: false
+  msw: false
+  sharp: false
+  unrs-resolver: false
