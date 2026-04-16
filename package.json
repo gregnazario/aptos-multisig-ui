@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --port 3123",
-    "build": "next build",
+    "build": "npm rebuild better-sqlite3 && next build",
     "start": "next start",
     "lint": "biome check src/",
     "lint:fix": "biome check --fix src/",
