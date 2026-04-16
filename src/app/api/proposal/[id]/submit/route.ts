@@ -6,6 +6,7 @@ import { deriveMultisigAddress, combineSignatures } from "@/lib/aptos/multisig";
 import { submitMultisigTransaction } from "@/lib/aptos/transaction";
 import type { AptosNetwork } from "@/lib/aptos/client";
 import { getGasStationConfig, signAsFeePayer } from "@/lib/gas-station";
+import {stringify} from "@/lib/utils";
 
 export async function POST(
   _request: NextRequest,
@@ -86,6 +87,8 @@ export async function POST(
   }
 
   // 4. Combine signatures into MultiEd25519Signature
+  console.log("signedResponses", stringify(signedResponses));
+
   const multiSignature = combineSignatures(
     signedResponses.map((r) => ({
       signerIndex: r.signerIndex,
