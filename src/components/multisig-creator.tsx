@@ -1,20 +1,15 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import { useWallet } from "@/components/wallet-provider";
 import { useWallet as useAdapterWallet } from "@aptos-labs/wallet-adapter-react";
+import { CheckCircle2, Clock, Copy, ExternalLink } from "lucide-react";
+import { useCallback, useState } from "react";
 import { ConnectWalletButton } from "@/components/connect-wallet-button";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -22,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CheckCircle2, Clock, Copy, ExternalLink } from "lucide-react";
+import { useWallet } from "@/components/wallet-provider";
 
 const ADDRESS_REGEX = /^0x[0-9a-fA-F]{64}$/;
 
@@ -206,7 +201,7 @@ export function MultisigCreator() {
 
   const isCreatorVerified =
     setupData?.verifications?.some(
-      (v) => v.address.toLowerCase() === address?.toLowerCase()
+      (v) => v.address.toLowerCase() === address?.toLowerCase(),
     ) ?? false;
 
   return (
@@ -218,8 +213,8 @@ export function MultisigCreator() {
         {!connected && (
           <div className="flex flex-col items-center gap-4 py-8 text-center">
             <p className="text-muted-foreground">
-              Connect your Petra wallet to create a multisig. Your wallet will be
-              added as the first signer.
+              Connect your Petra wallet to create a multisig. Your wallet will
+              be added as the first signer.
             </p>
             <ConnectWalletButton />
           </div>
@@ -260,11 +255,13 @@ export function MultisigCreator() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {Array.from({ length: numSigners }, (_, i) => i + 1).map((n) => (
-                    <SelectItem key={n} value={n}>
-                      {n}
-                    </SelectItem>
-                  ))}
+                  {Array.from({ length: numSigners }, (_, i) => i + 1).map(
+                    (n) => (
+                      <SelectItem key={n} value={n}>
+                        {n}
+                      </SelectItem>
+                    ),
+                  )}
                 </SelectContent>
               </Select>
               <p className="text-sm text-muted-foreground">
@@ -349,7 +346,9 @@ export function MultisigCreator() {
             {/* Creator verification */}
             {!isCreatorVerified && (
               <div className="space-y-2">
-                <p className="text-sm">Sign to verify your identity as a signer.</p>
+                <p className="text-sm">
+                  Sign to verify your identity as a signer.
+                </p>
                 <Button onClick={verifyCreator} disabled={loading}>
                   {loading ? "Signing..." : "Sign to Verify"}
                 </Button>
@@ -383,7 +382,7 @@ export function MultisigCreator() {
                   </div>
                   {setupData.addresses.map((addr: string, i: number) => {
                     const verified = setupData.verifications.some(
-                      (v) => v.address.toLowerCase() === addr.toLowerCase()
+                      (v) => v.address.toLowerCase() === addr.toLowerCase(),
                     );
                     return (
                       <div

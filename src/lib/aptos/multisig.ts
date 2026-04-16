@@ -1,9 +1,9 @@
 import {
+  AuthenticationKey,
   Ed25519PublicKey,
   Ed25519Signature,
   MultiEd25519PublicKey,
   MultiEd25519Signature,
-  AuthenticationKey,
 } from "@aptos-labs/ts-sdk";
 
 export interface MultisigAddress {
@@ -13,11 +13,11 @@ export interface MultisigAddress {
 
 export function deriveMultisigAddress(
   publicKeyHexes: string[],
-  threshold: number
+  threshold: number,
 ): MultisigAddress {
   if (threshold > publicKeyHexes.length) {
     throw new Error(
-      `Threshold ${threshold} exceeds number of keys ${publicKeyHexes.length}`
+      `Threshold ${threshold} exceeds number of keys ${publicKeyHexes.length}`,
     );
   }
   if (threshold < 1) {
@@ -29,7 +29,9 @@ export function deriveMultisigAddress(
 
   const publicKeys = publicKeyHexes.map((hex) => new Ed25519PublicKey(hex));
   const multiPublicKey = new MultiEd25519PublicKey({ publicKeys, threshold });
-  const authKey = AuthenticationKey.fromPublicKey({ publicKey: multiPublicKey });
+  const authKey = AuthenticationKey.fromPublicKey({
+    publicKey: multiPublicKey,
+  });
   const address = authKey.derivedAddress().toString();
 
   return { address, multiPublicKey };
@@ -41,7 +43,7 @@ export interface SignatureWithIndex {
 }
 
 export function combineSignatures(
-  signatures: SignatureWithIndex[]
+  signatures: SignatureWithIndex[],
 ): MultiEd25519Signature {
   if (signatures.length === 0) {
     throw new Error("At least one signature is required");
@@ -56,10 +58,10 @@ export function combineSignatures(
 
 export function findSignerIndex(
   publicKeyHexes: string[],
-  signerPublicKeyHex: string
+  signerPublicKeyHex: string,
 ): number {
   const normalized = signerPublicKeyHex.toLowerCase().replace(/^0x/, "");
   return publicKeyHexes.findIndex(
-    (pk) => pk.toLowerCase().replace(/^0x/, "") === normalized
+    (pk) => pk.toLowerCase().replace(/^0x/, "") === normalized,
   );
 }

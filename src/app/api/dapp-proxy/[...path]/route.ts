@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 
 /**
  * Full reverse proxy for the dApp browser.
@@ -189,19 +189,21 @@ async function proxyFetch(
   request: NextRequest,
   origin: string,
   method: string = "GET",
-  body?: ArrayBuffer
+  body?: ArrayBuffer,
 ): Promise<Response> {
   const headers: Record<string, string> = {
     "User-Agent": request.headers.get("user-agent") ?? "Mozilla/5.0",
     Accept: request.headers.get("accept") ?? "*/*",
-    "Accept-Language": request.headers.get("accept-language") ?? "en-US,en;q=0.5",
+    "Accept-Language":
+      request.headers.get("accept-language") ?? "en-US,en;q=0.5",
     "Accept-Encoding": "identity",
     Referer: origin,
     Origin: origin,
   };
 
   if (method === "POST" || method === "PUT" || method === "PATCH") {
-    headers["Content-Type"] = request.headers.get("content-type") ?? "application/json";
+    headers["Content-Type"] =
+      request.headers.get("content-type") ?? "application/json";
   }
 
   return fetch(targetUrl, {
@@ -215,10 +217,13 @@ async function proxyFetch(
 function buildTargetUrl(
   path: string[],
   origin: string,
-  searchParams: URLSearchParams
+  searchParams: URLSearchParams,
 ): string {
   const pathStr = path?.join("/") ?? "";
-  const targetUrl = new URL(pathStr, origin.endsWith("/") ? origin : origin + "/");
+  const targetUrl = new URL(
+    pathStr,
+    origin.endsWith("/") ? origin : `${origin}/`,
+  );
 
   searchParams.forEach((value, key) => {
     if (key !== "origin") {
@@ -232,7 +237,7 @@ function buildTargetUrl(
 async function handleProxyResponse(
   response: Response,
   origin: string,
-  isInitialPage: boolean
+  _isInitialPage: boolean,
 ): Promise<NextResponse> {
   const contentType = response.headers.get("content-type") ?? "";
 
@@ -261,16 +266,16 @@ async function handleProxyResponse(
   if (headPattern.test(html)) {
     html = html.replace(
       headPattern,
-      (match) => `${match}${baseTag}${injectScript}`
+      (match) => `${match}${baseTag}${injectScript}`,
     );
   } else {
-    html = `<!DOCTYPE html><html><head>${baseTag}${injectScript}</head>` + html;
+    html = `<!DOCTYPE html><html><head>${baseTag}${injectScript}</head>${html}`;
   }
 
   // Remove CSP meta tags that block our script
   html = html.replace(
     /<meta[^>]*http-equiv=["']Content-Security-Policy["'][^>]*>/gi,
-    ""
+    "",
   );
 
   return new NextResponse(html, {
@@ -283,7 +288,7 @@ async function handleProxyResponse(
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ path: string[] }> }
+  { params }: { params: Promise<{ path: string[] }> },
 ) {
   const { path } = await params;
   const origin = request.nextUrl.searchParams.get("origin");
@@ -291,7 +296,7 @@ export async function GET(
   if (!origin) {
     return NextResponse.json(
       { error: "Missing origin query parameter" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -304,14 +309,14 @@ export async function GET(
   } catch (err) {
     return NextResponse.json(
       { error: `Proxy error: ${(err as Error).message}` },
-      { status: 502 }
+      { status: 502 },
     );
   }
 }
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ path: string[] }> }
+  { params }: { params: Promise<{ path: string[] }> },
 ) {
   const { path } = await params;
   const origin = request.nextUrl.searchParams.get("origin");
@@ -319,7 +324,7 @@ export async function POST(
   if (!origin) {
     return NextResponse.json(
       { error: "Missing origin query parameter" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -333,14 +338,15 @@ export async function POST(
     return new NextResponse(responseBody, {
       status: response.status,
       headers: {
-        "Content-Type": response.headers.get("content-type") ?? "application/octet-stream",
+        "Content-Type":
+          response.headers.get("content-type") ?? "application/octet-stream",
         "Access-Control-Allow-Origin": "*",
       },
     });
   } catch (err) {
     return NextResponse.json(
       { error: `Proxy error: ${(err as Error).message}` },
-      { status: 502 }
+      { status: 502 },
     );
   }
 }

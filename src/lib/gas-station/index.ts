@@ -1,4 +1,4 @@
-import { Ed25519PrivateKey, AccountAddress } from "@aptos-labs/ts-sdk";
+import { AccountAddress, Ed25519PrivateKey } from "@aptos-labs/ts-sdk";
 import type { AptosNetwork } from "@/lib/aptos/client";
 
 interface GasStationConfig {

@@ -1,15 +1,14 @@
 import {
   AccountAddress,
   AccountAuthenticatorMultiEd25519,
-  Aptos,
-  MultiEd25519PublicKey,
-  MultiEd25519Signature,
-  Serializer,
   Deserializer,
-  SimpleTransaction,
   generateSigningMessageForTransaction,
+  type MultiEd25519PublicKey,
+  type MultiEd25519Signature,
+  Serializer,
+  SimpleTransaction,
 } from "@aptos-labs/ts-sdk";
-import { getAptosClient, AptosNetwork } from "./client";
+import { type AptosNetwork, getAptosClient } from "./client";
 
 export interface EntryFunctionPayload {
   module: string;
@@ -38,7 +37,7 @@ export interface BuiltTransaction {
 }
 
 export async function buildTransaction(
-  config: TransactionConfig
+  config: TransactionConfig,
 ): Promise<BuiltTransaction> {
   const aptos = getAptosClient(config.network);
   const senderAddress = AccountAddress.from(config.multisigAddress);
@@ -66,7 +65,7 @@ export async function buildTransaction(
   const serializer = new Serializer();
   transaction.serialize(serializer);
   const rawTransactionBytes = Buffer.from(serializer.toUint8Array()).toString(
-    "hex"
+    "hex",
   );
   const signingMessage = generateSigningMessageForTransaction(transaction);
 
@@ -100,7 +99,7 @@ export async function submitMultisigTransaction(params: {
 
   const authenticator = new AccountAuthenticatorMultiEd25519(
     params.multiPublicKey,
-    params.multiSignature
+    params.multiSignature,
   );
 
   const response = await aptos.transaction.submit.simple({

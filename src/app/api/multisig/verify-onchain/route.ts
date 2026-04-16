@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getAptosClient, type AptosNetwork } from "@/lib/aptos/client";
+import { type NextRequest, NextResponse } from "next/server";
+import { type AptosNetwork, getAptosClient } from "@/lib/aptos/client";
 
 const VALID_NETWORKS = ["mainnet", "testnet", "devnet"] as const;
 
@@ -12,23 +12,34 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "address is required" }, { status: 400 });
   }
 
-  if (!network || !VALID_NETWORKS.includes(network as (typeof VALID_NETWORKS)[number])) {
+  if (
+    !network ||
+    !VALID_NETWORKS.includes(network as (typeof VALID_NETWORKS)[number])
+  ) {
     return NextResponse.json(
       { error: "network must be one of: mainnet, testnet, devnet" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
   try {
     const client = getAptosClient(network as AptosNetwork);
-    const accountInfo = await client.getAccountInfo({ accountAddress: address });
+    const accountInfo = await client.getAccountInfo({
+      accountAddress: address,
+    });
     const authKey = accountInfo.authentication_key;
 
     // The expected auth key for a fresh account is derived from the address itself.
     // If the on-chain auth key differs from the address (with 0x prefix), it may
     // indicate the account has been rotated or is not a standard multisig.
-    const normalizedAddress = address.toLowerCase().replace(/^0x/, "").padStart(64, "0");
-    const normalizedAuthKey = authKey?.toLowerCase().replace(/^0x/, "").padStart(64, "0");
+    const normalizedAddress = address
+      .toLowerCase()
+      .replace(/^0x/, "")
+      .padStart(64, "0");
+    const normalizedAuthKey = authKey
+      ?.toLowerCase()
+      .replace(/^0x/, "")
+      .padStart(64, "0");
 
     if (normalizedAuthKey && normalizedAuthKey !== normalizedAddress) {
       return NextResponse.json({
@@ -41,6 +52,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ verified: true });
   } catch {
     // Account may not exist on-chain yet, which is fine for import
-    return NextResponse.json({ verified: false, note: "Account not found on-chain. It may not have been funded yet." });
+    return NextResponse.json({
+      verified: false,
+      note: "Account not found on-chain. It may not have been funded yet.",
+    });
   }
 }

@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
-import { proposals, multisigs } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { getAptosClient, type AptosNetwork } from "@/lib/aptos/client";
+import { type NextRequest, NextResponse } from "next/server";
+import { type AptosNetwork, getAptosClient } from "@/lib/aptos/client";
+import { db } from "@/lib/db";
+import { multisigs, proposals } from "@/lib/db/schema";
 
 /**
  * POST /api/proposal/{id}/check-status
@@ -12,7 +12,7 @@ import { getAptosClient, type AptosNetwork } from "@/lib/aptos/client";
  */
 export async function POST(
   _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
 

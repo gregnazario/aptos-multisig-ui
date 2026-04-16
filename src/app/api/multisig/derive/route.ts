@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { deriveMultisigAddress } from "@/lib/aptos/multisig";
 
 export async function POST(request: NextRequest) {
@@ -14,17 +14,25 @@ export async function POST(request: NextRequest) {
     threshold?: number;
   };
 
-  if (!Array.isArray(publicKeys) || publicKeys.length < 2 || publicKeys.length > 32) {
+  if (
+    !Array.isArray(publicKeys) ||
+    publicKeys.length < 2 ||
+    publicKeys.length > 32
+  ) {
     return NextResponse.json(
       { error: "publicKeys must be an array of 2-32 hex strings" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
-  if (typeof threshold !== "number" || threshold < 1 || threshold > publicKeys.length) {
+  if (
+    typeof threshold !== "number" ||
+    threshold < 1 ||
+    threshold > publicKeys.length
+  ) {
     return NextResponse.json(
       { error: `threshold must be between 1 and ${publicKeys.length}` },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -34,7 +42,7 @@ export async function POST(request: NextRequest) {
   } catch (err) {
     return NextResponse.json(
       { error: `Failed to derive address: ${(err as Error).message}` },
-      { status: 400 }
+      { status: 400 },
     );
   }
 }

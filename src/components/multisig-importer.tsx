@@ -1,13 +1,9 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useWallet } from "@/components/wallet-provider";
+import { useState } from "react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Card,
   CardContent,
@@ -15,7 +11,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
+import { useWallet } from "@/components/wallet-provider";
 
 const PUBLIC_KEY_REGEX = /^0x[0-9a-fA-F]{64}$/;
 const ADDRESS_REGEX = /^0x[0-9a-fA-F]{1,64}$/;
@@ -50,7 +50,7 @@ function LookupImporter() {
 
     try {
       const res = await fetch(
-        `/api/multisig/lookup?address=${encodeURIComponent(address.trim())}&network=${network}`
+        `/api/multisig/lookup?address=${encodeURIComponent(address.trim())}&network=${network}`,
       );
       const data = await res.json();
 
@@ -136,8 +136,8 @@ function LookupImporter() {
           <Alert>
             <AlertDescription className="space-y-2">
               <p className="font-medium">
-                Found {lookupResult.threshold}-of-{lookupResult.publicKeys.length}{" "}
-                MultiEd25519 multisig
+                Found {lookupResult.threshold}-of-
+                {lookupResult.publicKeys.length} MultiEd25519 multisig
               </p>
               <p className="text-xs text-muted-foreground">
                 Source transaction:{" "}
@@ -217,7 +217,7 @@ function ManualImporter() {
     const invalidKeys = keys.filter((k) => !PUBLIC_KEY_REGEX.test(k));
     if (invalidKeys.length > 0) {
       setError(
-        `Invalid public key format: ${invalidKeys[0]}. Keys must be 0x followed by 64 hex characters.`
+        `Invalid public key format: ${invalidKeys[0]}. Keys must be 0x followed by 64 hex characters.`,
       );
       return;
     }
@@ -248,7 +248,7 @@ function ManualImporter() {
         expectedAddress.toLowerCase() !== data.address.toLowerCase()
       ) {
         setError(
-          `Derived address does not match expected address.\nDerived: ${data.address}\nExpected: ${expectedAddress}`
+          `Derived address does not match expected address.\nDerived: ${data.address}\nExpected: ${expectedAddress}`,
         );
         return;
       }
@@ -256,7 +256,7 @@ function ManualImporter() {
       if (network) {
         try {
           const infoRes = await fetch(
-            `/api/multisig/verify-onchain?address=${data.address}&network=${network}`
+            `/api/multisig/verify-onchain?address=${data.address}&network=${network}`,
           );
           if (infoRes.ok) {
             const infoData = await infoRes.json();

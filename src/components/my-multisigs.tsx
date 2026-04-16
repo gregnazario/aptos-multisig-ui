@@ -1,15 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useWallet } from "@/components/wallet-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useWallet } from "@/components/wallet-provider";
 
 interface MultisigRecord {
   id: string;
@@ -48,7 +43,9 @@ export function MyMultisigs() {
     }
 
     setLoading(true);
-    fetch(`/api/multisig/by-signer?address=${encodeURIComponent(address)}&network=${network}`)
+    fetch(
+      `/api/multisig/by-signer?address=${encodeURIComponent(address)}&network=${network}`,
+    )
       .then((r) => r.json())
       .then(setData)
       .catch(() => setData(null))
@@ -58,7 +55,9 @@ export function MyMultisigs() {
   if (!connected) return null;
 
   if (loading) {
-    return <p className="text-sm text-muted-foreground">Loading your multisigs...</p>;
+    return (
+      <p className="text-sm text-muted-foreground">Loading your multisigs...</p>
+    );
   }
 
   const hasMultisigs = data && data.multisigs.length > 0;

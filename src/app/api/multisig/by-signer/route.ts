@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
+import { and, eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { multisigs, multisigSetups, setupVerifications } from "@/lib/db/schema";
-import { eq, and, like } from "drizzle-orm";
+import { multisigSetups, multisigs, setupVerifications } from "@/lib/db/schema";
 
 /**
  * GET /api/multisig/by-signer?address=0x...&network=devnet
@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
   if (!address) {
     return NextResponse.json(
       { error: "Missing address parameter" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -27,11 +27,14 @@ export async function GET(request: NextRequest) {
   });
 
   // Also check case-insensitive by fetching all and filtering
-  const allVerifications = verifications.length > 0
-    ? verifications
-    : await db.query.setupVerifications.findMany().then((all) =>
-        all.filter((v) => v.address.toLowerCase() === lowerAddress)
-      );
+  const allVerifications =
+    verifications.length > 0
+      ? verifications
+      : await db.query.setupVerifications
+          .findMany()
+          .then((all) =>
+            all.filter((v) => v.address.toLowerCase() === lowerAddress),
+          );
 
   const setupIds = [...new Set(allVerifications.map((v) => v.setupId))];
 
@@ -42,7 +45,7 @@ export async function GET(request: NextRequest) {
       where: and(
         eq(multisigSetups.id, setupId),
         eq(multisigSetups.status, "complete"),
-        eq(multisigSetups.network, network)
+        eq(multisigSetups.network, network),
       ),
     });
     if (setup) completedSetups.push(setup);
@@ -72,7 +75,7 @@ export async function GET(request: NextRequest) {
   const allSetups = await db.query.multisigSetups.findMany({
     where: and(
       eq(multisigSetups.status, "pending"),
-      eq(multisigSetups.network, network)
+      eq(multisigSetups.network, network),
     ),
   });
 
@@ -98,7 +101,7 @@ export async function GET(request: NextRequest) {
         verifiedCount: vCount,
         totalSigners: addresses.length,
       };
-    })
+    }),
   );
 
   return NextResponse.json({

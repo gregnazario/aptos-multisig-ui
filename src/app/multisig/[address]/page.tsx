@@ -1,19 +1,14 @@
+import { and, eq } from "drizzle-orm";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ProposalList } from "@/components/proposal-list";
+import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import type { AptosNetwork } from "@/lib/aptos/client";
 import { db } from "@/lib/db";
 import { multisigs } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
-import { buttonVariants } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { ProposalList } from "@/components/proposal-list";
-import type { AptosNetwork } from "@/lib/aptos/client";
 
 interface Props {
   params: Promise<{ address: string }>;
@@ -34,10 +29,7 @@ export default async function MultisigDashboardPage({
   const network = (networkParam ?? "mainnet") as AptosNetwork;
 
   const multisig = await db.query.multisigs.findFirst({
-    where: and(
-      eq(multisigs.address, address),
-      eq(multisigs.network, network)
-    ),
+    where: and(eq(multisigs.address, address), eq(multisigs.network, network)),
   });
 
   if (!multisig) {
@@ -88,10 +80,7 @@ export default async function MultisigDashboardPage({
         <CardContent>
           <div className="space-y-2">
             {publicKeys.map((key, index) => (
-              <div
-                key={key}
-                className="flex items-center gap-2 text-sm"
-              >
+              <div key={key} className="flex items-center gap-2 text-sm">
                 <span className="text-muted-foreground w-6 text-right">
                   {index}
                 </span>

@@ -1,16 +1,16 @@
 "use client";
 
+import { Network } from "@aptos-labs/ts-sdk";
 import {
   AptosWalletAdapterProvider,
   useWallet as useAdapterWallet,
 } from "@aptos-labs/wallet-adapter-react";
-import { Network } from "@aptos-labs/ts-sdk";
 import {
   createContext,
-  useContext,
-  useState,
   useCallback,
+  useContext,
   useRef,
+  useState,
 } from "react";
 import type { AptosNetwork } from "@/lib/aptos/client";
 
@@ -30,8 +30,9 @@ interface MultisigWalletContextValue {
   verifyIdentity: () => Promise<string>;
 }
 
-const MultisigWalletContext =
-  createContext<MultisigWalletContextValue | null>(null);
+const MultisigWalletContext = createContext<MultisigWalletContextValue | null>(
+  null,
+);
 
 function MultisigWalletInner({
   children,

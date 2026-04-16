@@ -33,7 +33,7 @@ export function SignerStatusGrid({
 
   const getStatus = (publicKey: string) => {
     const response = responses.find(
-      (r) => r.publicKey.toLowerCase() === publicKey.toLowerCase()
+      (r) => r.publicKey.toLowerCase() === publicKey.toLowerCase(),
     );
     if (!response) return "pending";
     return response.response;

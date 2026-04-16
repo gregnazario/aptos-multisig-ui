@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
+import { v4 as uuid } from "uuid";
 import { db } from "@/lib/db";
 import { multisigSetups } from "@/lib/db/schema";
-import { v4 as uuid } from "uuid";
 
 const VALID_NETWORKS = ["mainnet", "testnet", "devnet"] as const;
 const ADDRESS_REGEX = /^0x[0-9a-fA-F]{64}$/;
@@ -23,10 +23,14 @@ export async function POST(request: NextRequest) {
   };
 
   // Validate addresses
-  if (!Array.isArray(addresses) || addresses.length < 2 || addresses.length > 32) {
+  if (
+    !Array.isArray(addresses) ||
+    addresses.length < 2 ||
+    addresses.length > 32
+  ) {
     return NextResponse.json(
       { error: "addresses must be an array of 2-32 Aptos addresses" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -34,7 +38,7 @@ export async function POST(request: NextRequest) {
     if (!ADDRESS_REGEX.test(addr)) {
       return NextResponse.json(
         { error: `Invalid Aptos address: ${addr}` },
-        { status: 400 }
+        { status: 400 },
       );
     }
   }
@@ -44,23 +48,30 @@ export async function POST(request: NextRequest) {
   if (uniqueAddresses.size !== addresses.length) {
     return NextResponse.json(
       { error: "Duplicate addresses are not allowed" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
   // Validate threshold
-  if (typeof threshold !== "number" || threshold < 1 || threshold > addresses.length) {
+  if (
+    typeof threshold !== "number" ||
+    threshold < 1 ||
+    threshold > addresses.length
+  ) {
     return NextResponse.json(
       { error: `threshold must be between 1 and ${addresses.length}` },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
   // Validate network
-  if (!network || !VALID_NETWORKS.includes(network as (typeof VALID_NETWORKS)[number])) {
+  if (
+    !network ||
+    !VALID_NETWORKS.includes(network as (typeof VALID_NETWORKS)[number])
+  ) {
     return NextResponse.json(
       { error: "network must be one of: mainnet, testnet, devnet" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -68,7 +79,7 @@ export async function POST(request: NextRequest) {
   if (!createdBy || !ADDRESS_REGEX.test(createdBy)) {
     return NextResponse.json(
       { error: "createdBy must be a valid Aptos address" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -76,7 +87,7 @@ export async function POST(request: NextRequest) {
   if (!addresses.some((a) => a.toLowerCase() === createdBy.toLowerCase())) {
     return NextResponse.json(
       { error: "createdBy address must be in the addresses list" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -93,6 +104,6 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json(
     { id, url: `/multisig/setup/${id}` },
-    { status: 201 }
+    { status: 201 },
   );
 }

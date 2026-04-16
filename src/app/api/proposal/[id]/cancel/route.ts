@@ -1,13 +1,13 @@
-import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
-import { proposals, multisigs } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { verifySessionToken } from "@/lib/auth/session";
+import { type NextRequest, NextResponse } from "next/server";
 import { findSignerIndex } from "@/lib/aptos/multisig";
+import { verifySessionToken } from "@/lib/auth/session";
+import { db } from "@/lib/db";
+import { multisigs, proposals } from "@/lib/db/schema";
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
 
@@ -28,7 +28,7 @@ export async function POST(
   if (proposal.status === "submitted" || proposal.status === "cancelled") {
     return NextResponse.json(
       { error: `Proposal is already ${proposal.status}` },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -45,7 +45,7 @@ export async function POST(
   if (signerIndex === -1) {
     return NextResponse.json(
       { error: "You are not a signer on this multisig" },
-      { status: 403 }
+      { status: 403 },
     );
   }
 

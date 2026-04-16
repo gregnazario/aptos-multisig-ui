@@ -1,20 +1,15 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { useWallet } from "@/components/wallet-provider";
 import { useWallet as useAdapterWallet } from "@aptos-labs/wallet-adapter-react";
+import { CheckCircle2, Clock, ExternalLink } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 import { ConnectWalletButton } from "@/components/connect-wallet-button";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, Clock, ExternalLink } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { useWallet } from "@/components/wallet-provider";
 
 interface SetupData {
   id: string;
@@ -66,18 +61,19 @@ export function SetupVerifier({ setupId }: { setupId: string }) {
   const isSignerInSetup =
     setupData && address
       ? setupData.addresses.some(
-          (a) => a.toLowerCase() === address.toLowerCase()
+          (a) => a.toLowerCase() === address.toLowerCase(),
         )
       : false;
 
   const isAlreadyVerified =
     setupData && address
       ? setupData.verifications.some(
-          (v) => v.address.toLowerCase() === address.toLowerCase()
+          (v) => v.address.toLowerCase() === address.toLowerCase(),
         )
       : false;
 
-  const canVerify = isSignerInSetup && !isAlreadyVerified && setupData?.status === "pending";
+  const canVerify =
+    isSignerInSetup && !isAlreadyVerified && setupData?.status === "pending";
 
   async function verify() {
     if (!setupData || !address) return;
@@ -179,7 +175,7 @@ export function SetupVerifier({ setupId }: { setupId: string }) {
           <Label>Signers</Label>
           {setupData.addresses.map((addr: string, i: number) => {
             const verified = setupData.verifications.some(
-              (v) => v.address.toLowerCase() === addr.toLowerCase()
+              (v) => v.address.toLowerCase() === addr.toLowerCase(),
             );
             const isCurrentUser =
               address && addr.toLowerCase() === address.toLowerCase();
@@ -236,13 +232,16 @@ export function SetupVerifier({ setupId }: { setupId: string }) {
           </div>
         )}
 
-        {connected && isSignerInSetup && isAlreadyVerified && setupData.status === "pending" && (
-          <Alert>
-            <AlertDescription>
-              You have already verified. Waiting for other signers to verify.
-            </AlertDescription>
-          </Alert>
-        )}
+        {connected &&
+          isSignerInSetup &&
+          isAlreadyVerified &&
+          setupData.status === "pending" && (
+            <Alert>
+              <AlertDescription>
+                You have already verified. Waiting for other signers to verify.
+              </AlertDescription>
+            </Alert>
+          )}
 
         {connected && !isSignerInSetup && (
           <Alert>

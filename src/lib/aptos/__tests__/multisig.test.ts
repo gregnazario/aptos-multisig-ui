@@ -1,13 +1,10 @@
-import { describe, it, expect } from "vitest";
+import { Ed25519PrivateKey, MultiEd25519Signature } from "@aptos-labs/ts-sdk";
+import { describe, expect, it } from "vitest";
 import {
-  deriveMultisigAddress,
   combineSignatures,
+  deriveMultisigAddress,
   findSignerIndex,
 } from "../multisig";
-import {
-  Ed25519PrivateKey,
-  MultiEd25519Signature,
-} from "@aptos-labs/ts-sdk";
 
 describe("deriveMultisigAddress", () => {
   it("derives a deterministic address from public keys and threshold", () => {
@@ -36,23 +33,23 @@ describe("deriveMultisigAddress", () => {
   it("rejects threshold exceeding number of keys", () => {
     const key = Ed25519PrivateKey.generate().publicKey().toString();
     expect(() => deriveMultisigAddress([key], 2)).toThrow(
-      "Threshold 2 exceeds number of keys 1"
+      "Threshold 2 exceeds number of keys 1",
     );
   });
 
   it("rejects threshold less than 1", () => {
     const key = Ed25519PrivateKey.generate().publicKey().toString();
     expect(() => deriveMultisigAddress([key], 0)).toThrow(
-      "Threshold must be at least 1"
+      "Threshold must be at least 1",
     );
   });
 
   it("rejects more than 32 public keys", () => {
     const keys = Array.from({ length: 33 }, () =>
-      Ed25519PrivateKey.generate().publicKey().toString()
+      Ed25519PrivateKey.generate().publicKey().toString(),
     );
     expect(() => deriveMultisigAddress(keys, 2)).toThrow(
-      "Maximum 32 public keys supported"
+      "Maximum 32 public keys supported",
     );
   });
 });
