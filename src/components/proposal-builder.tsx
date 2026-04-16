@@ -11,6 +11,8 @@ import { useWallet } from "@/components/wallet-provider";
 import type { AptosNetwork } from "@/lib/aptos/client";
 import { type UrlProposalData, encodeProposalUrl } from "@/lib/url-state";
 
+type StorageMode = "url" | "server";
+
 interface ProposalBuilderProps {
   multisigAddress: string;
   network: AptosNetwork;
@@ -24,8 +26,9 @@ export function ProposalBuilder({
   threshold,
   publicKeys,
 }: ProposalBuilderProps) {
-  const { connected } = useWallet();
+  const { connected, verifyIdentity } = useWallet();
 
+  const [mode, setMode] = useState<StorageMode>("url");
   const [description, setDescription] = useState("");
   const [moduleAddress, setModuleAddress] = useState("0x1");
   const [moduleName, setModuleName] = useState("aptos_account");
@@ -72,8 +75,8 @@ export function ProposalBuilder({
           .filter(Boolean),
       };
 
-      // Build the transaction server-side (just serialization, no DB storage)
-      const res = await fetch("/api/multisig/build-tx", {
+      // Build the transaction server-side
+      const buildRes = await fetch("/api/multisig/build-tx", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -87,32 +90,67 @@ export function ProposalBuilder({
         }),
       });
 
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error ?? "Failed to build transaction");
+      if (!buildRes.ok) {
+        const errData = await buildRes.json();
+        throw new Error(errData.error ?? "Failed to build transaction");
       }
 
-      const built = await res.json();
+      const built = await buildRes.json();
 
-      // Encode everything into a URL — no database needed
-      const urlData: UrlProposalData = {
-        pks: publicKeys,
-        th: threshold,
-        net: network,
-        tx: built.rawTransactionBytes,
-        desc: description.trim(),
-        fn: `${moduleAddress.trim()}::${moduleName.trim()}::${functionName.trim()}`,
-        args: payload.args.length > 0 ? payload.args : undefined,
-        seq: built.sequenceNumber,
-        exp: built.expirationTimestampSecs,
-        gas: built.maxGasAmount,
-        gasPrice: built.gasUnitPrice,
-        sigs: [],
-      };
+      if (mode === "url") {
+        // URL mode: encode everything into a shareable URL — no DB
+        const urlData: UrlProposalData = {
+          pks: publicKeys,
+          th: threshold,
+          net: network,
+          tx: built.rawTransactionBytes,
+          desc: description.trim(),
+          fn: `${moduleAddress.trim()}::${moduleName.trim()}::${functionName.trim()}`,
+          args: payload.args.length > 0 ? payload.args : undefined,
+          seq: built.sequenceNumber,
+          exp: built.expirationTimestampSecs,
+          gas: built.maxGasAmount,
+          gasPrice: built.gasUnitPrice,
+          sigs: [],
+        };
 
-      const urlPath = encodeProposalUrl(urlData);
-      const fullUrl = `${window.location.origin}${urlPath}`;
-      setSuccessUrl(fullUrl);
+        const urlPath = encodeProposalUrl(urlData);
+        const fullUrl = `${window.location.origin}${urlPath}`;
+        setSuccessUrl(fullUrl);
+      } else {
+        // Server mode: store in database
+        const token = await verifyIdentity();
+
+        const res = await fetch(
+          `/api/multisig/${encodeURIComponent(multisigAddress)}/proposals`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              network,
+              description: description.trim(),
+              payload,
+              maxGasAmount: maxGas,
+              gasUnitPrice: gasPrice,
+              expirationSeconds: expirationHours * 3600,
+              feePayerAddress: feePayerAddress.trim() || undefined,
+              source: "manual",
+            }),
+          },
+        );
+
+        if (!res.ok) {
+          const errData = await res.json();
+          throw new Error(errData.error ?? "Failed to create proposal");
+        }
+
+        const data = await res.json();
+        const fullUrl = `${window.location.origin}${data.url}`;
+        setSuccessUrl(fullUrl);
+      }
     } catch (err: unknown) {
       const message =
         err instanceof Error ? err.message : "An unexpected error occurred.";
@@ -203,6 +241,34 @@ export function ProposalBuilder({
 
         {connected && (
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Storage mode */}
+            <div className="flex items-center gap-3 rounded-md border p-3">
+              <Label className="text-sm font-medium shrink-0">Storage:</Label>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant={mode === "url" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setMode("url")}
+                >
+                  URL (no server)
+                </Button>
+                <Button
+                  type="button"
+                  variant={mode === "server" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setMode("server")}
+                >
+                  Server
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {mode === "url"
+                  ? "All data encoded in the link. No database needed."
+                  : "Stored on server. Better for large payloads."}
+              </p>
+            </div>
+
             {/* Description */}
             <div className="space-y-2">
               <Label htmlFor="description">Description</Label>
