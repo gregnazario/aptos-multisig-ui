@@ -4,7 +4,7 @@ import { type NextRequest, NextResponse } from "next/server";
  * Middleware that adds CORS headers to API responses when CORS_ORIGIN is set.
  * Used for split deployments where the frontend is on a different domain.
  */
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const corsOrigin = process.env.CORS_ORIGIN;
 
   // Handle CORS preflight
