@@ -30,16 +30,18 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">
+      <body className="min-h-full flex flex-col bg-background">
         <WalletProvider>
-          <header className="flex items-center justify-between border-b px-4 py-3">
-            <h1 className="text-lg font-semibold">Aptos Multisig</h1>
-            <div className="flex items-center gap-2">
+          <header className="sticky top-0 z-40 flex items-center justify-between border-b bg-card/80 backdrop-blur-sm px-6 py-3 shadow-sm">
+            <a href="/" className="text-lg font-bold tracking-tight">
+              Aptos Multisig
+            </a>
+            <div className="flex items-center gap-3">
               <NetworkSwitcher />
               <ConnectWalletButton />
             </div>
           </header>
-          <main className="p-4">{children}</main>
+          <main className="flex-1 p-6">{children}</main>
         </WalletProvider>
       </body>
     </html>
