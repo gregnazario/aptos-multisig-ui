@@ -7,17 +7,181 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const PUBLIC_KEY_REGEX = /^0x[0-9a-fA-F]{64}$/;
+const ADDRESS_REGEX = /^0x[0-9a-fA-F]{1,64}$/;
 
-export function MultisigImporter() {
+// ── Lookup by Address ─────────────────────────────────────────────────
+
+function LookupImporter() {
+  const { network } = useWallet();
+  const router = useRouter();
+
+  const [address, setAddress] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [lookupResult, setLookupResult] = useState<{
+    address: string;
+    publicKeys: string[];
+    threshold: number;
+    sourceTxn: string;
+  } | null>(null);
+  const [importing, setImporting] = useState(false);
+
+  async function handleLookup() {
+    setError(null);
+    setLookupResult(null);
+    setLoading(true);
+
+    if (!ADDRESS_REGEX.test(address.trim())) {
+      setError("Invalid Aptos address format.");
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const res = await fetch(
+        `/api/multisig/lookup?address=${encodeURIComponent(address.trim())}&network=${network}`
+      );
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error ?? "Lookup failed");
+        return;
+      }
+
+      setLookupResult(data);
+    } catch {
+      setError("Lookup failed. Please check the address and try again.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleImport() {
+    if (!lookupResult) return;
+    setError(null);
+    setImporting(true);
+
+    try {
+      const res = await fetch("/api/multisig", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          publicKeys: lookupResult.publicKeys,
+          threshold: lookupResult.threshold,
+          network,
+          expectedAddress: lookupResult.address,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        setError(data.error ?? "Failed to import");
+        setImporting(false);
+        return;
+      }
+
+      const data = await res.json();
+      router.push(`/multisig/${data.address}?network=${network}`);
+    } catch {
+      setError("Import failed.");
+      setImporting(false);
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="space-y-2">
+        <Label htmlFor="lookupAddress">Multisig Address</Label>
+        <div className="flex gap-2">
+          <Input
+            id="lookupAddress"
+            placeholder="0x..."
+            value={address}
+            onChange={(e) => {
+              setAddress(e.target.value);
+              setLookupResult(null);
+            }}
+            onKeyDown={(e) => e.key === "Enter" && handleLookup()}
+            className="font-mono text-xs"
+          />
+          <Button onClick={handleLookup} disabled={loading || !address.trim()}>
+            {loading ? "Looking up..." : "Lookup"}
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          The account must have sent at least one transaction so we can extract
+          its public keys from the on-chain authenticator.
+        </p>
+      </div>
+
+      {error && (
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {lookupResult && (
+        <div className="space-y-4">
+          <Alert>
+            <AlertDescription className="space-y-2">
+              <p className="font-medium">
+                Found {lookupResult.threshold}-of-{lookupResult.publicKeys.length}{" "}
+                MultiEd25519 multisig
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Source transaction:{" "}
+                <a
+                  href={`https://explorer.aptoslabs.com/txn/${lookupResult.sourceTxn}?network=${network}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline"
+                >
+                  {lookupResult.sourceTxn?.slice(0, 16)}...
+                </a>
+              </p>
+            </AlertDescription>
+          </Alert>
+
+          <div className="space-y-2">
+            <Label>Public Keys ({lookupResult.publicKeys.length})</Label>
+            <div className="space-y-1 rounded-md border p-3 bg-muted/50">
+              {lookupResult.publicKeys.map((key, i) => (
+                <p key={i} className="text-xs font-mono break-all">
+                  <span className="text-muted-foreground">#{i}: </span>
+                  {key}
+                </p>
+              ))}
+            </div>
+          </div>
+
+          <div className="text-sm">
+            <span className="font-medium">Threshold: </span>
+            {lookupResult.threshold} of {lookupResult.publicKeys.length}
+          </div>
+
+          <Button onClick={handleImport} disabled={importing}>
+            {importing ? "Importing..." : "Import Multisig"}
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Manual Import (existing) ──────────────────────────────────────────
+
+function ManualImporter() {
   const { network } = useWallet();
   const router = useRouter();
 
@@ -63,7 +227,6 @@ export function MultisigImporter() {
       return;
     }
 
-    // Derive address via API
     try {
       const res = await fetch("/api/multisig/derive", {
         method: "POST",
@@ -80,7 +243,6 @@ export function MultisigImporter() {
       const data = await res.json();
       setDerivedAddress(data.address);
 
-      // Check against expected address
       if (
         expectedAddress &&
         expectedAddress.toLowerCase() !== data.address.toLowerCase()
@@ -91,7 +253,6 @@ export function MultisigImporter() {
         return;
       }
 
-      // On-chain verification
       if (network) {
         try {
           const infoRes = await fetch(
@@ -104,7 +265,7 @@ export function MultisigImporter() {
             }
           }
         } catch {
-          // On-chain check is optional; proceed without warning
+          // optional check
         }
       }
 
@@ -119,12 +280,6 @@ export function MultisigImporter() {
     setLoading(true);
 
     const keys = parseKeys();
-
-    if (!network) {
-      setError("Wallet not connected or network unavailable.");
-      setLoading(false);
-      return;
-    }
 
     try {
       const res = await fetch("/api/multisig", {
@@ -154,94 +309,112 @@ export function MultisigImporter() {
   }
 
   return (
+    <div className="space-y-6">
+      <div className="space-y-2">
+        <Label htmlFor="publicKeys">Public Keys (one per line)</Label>
+        <Textarea
+          id="publicKeys"
+          placeholder={"0xabc123...def456\n0x789abc...012def"}
+          rows={6}
+          value={keysText}
+          onChange={(e) => {
+            setKeysText(e.target.value);
+            setValidated(false);
+            setDerivedAddress(null);
+          }}
+          className="font-mono text-xs"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="threshold">Threshold</Label>
+        <Input
+          id="threshold"
+          type="number"
+          min={1}
+          value={threshold}
+          onChange={(e) => {
+            setThreshold(Number(e.target.value));
+            setValidated(false);
+            setDerivedAddress(null);
+          }}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="expectedAddress">Expected Address (optional)</Label>
+        <Input
+          id="expectedAddress"
+          placeholder="0x..."
+          value={expectedAddress}
+          onChange={(e) => {
+            setExpectedAddress(e.target.value);
+            setValidated(false);
+          }}
+          className="font-mono text-xs"
+        />
+      </div>
+
+      {error && (
+        <Alert variant="destructive">
+          <AlertDescription className="whitespace-pre-wrap">
+            {error}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {warning && (
+        <Alert>
+          <AlertDescription>{warning}</AlertDescription>
+        </Alert>
+      )}
+
+      {derivedAddress && !error && (
+        <Alert>
+          <AlertDescription>
+            <span className="font-medium">Derived address:</span>{" "}
+            <code className="text-xs break-all">{derivedAddress}</code>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      <div className="flex gap-4">
+        <Button variant="outline" onClick={validate}>
+          Validate
+        </Button>
+        <Button onClick={importMultisig} disabled={!validated || loading}>
+          {loading ? "Importing..." : "Import"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ── Main Importer with Tabs ───────────────────────────────────────────
+
+export function MultisigImporter() {
+  return (
     <Card>
       <CardHeader>
         <CardTitle>Import Existing Multisig</CardTitle>
+        <CardDescription>
+          Import a multisig by looking up its address on-chain, or by manually
+          providing the public keys and threshold.
+        </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Public keys textarea */}
-        <div className="space-y-2">
-          <Label htmlFor="publicKeys">Public Keys (one per line)</Label>
-          <Textarea
-            id="publicKeys"
-            placeholder={"0xabc123...def456\n0x789abc...012def"}
-            rows={6}
-            value={keysText}
-            onChange={(e) => {
-              setKeysText(e.target.value);
-              setValidated(false);
-              setDerivedAddress(null);
-            }}
-            className="font-mono text-xs"
-          />
-        </div>
-
-        {/* Threshold */}
-        <div className="space-y-2">
-          <Label htmlFor="threshold">Threshold</Label>
-          <Input
-            id="threshold"
-            type="number"
-            min={1}
-            value={threshold}
-            onChange={(e) => {
-              setThreshold(Number(e.target.value));
-              setValidated(false);
-              setDerivedAddress(null);
-            }}
-          />
-        </div>
-
-        {/* Expected address */}
-        <div className="space-y-2">
-          <Label htmlFor="expectedAddress">Expected Address (optional)</Label>
-          <Input
-            id="expectedAddress"
-            placeholder="0x..."
-            value={expectedAddress}
-            onChange={(e) => {
-              setExpectedAddress(e.target.value);
-              setValidated(false);
-            }}
-            className="font-mono text-xs"
-          />
-        </div>
-
-        {/* Error display */}
-        {error && (
-          <Alert variant="destructive">
-            <AlertDescription className="whitespace-pre-wrap">
-              {error}
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {/* Warning display */}
-        {warning && (
-          <Alert>
-            <AlertDescription>{warning}</AlertDescription>
-          </Alert>
-        )}
-
-        {/* Derived address */}
-        {derivedAddress && !error && (
-          <Alert>
-            <AlertDescription>
-              <span className="font-medium">Derived address:</span>{" "}
-              <code className="text-xs break-all">{derivedAddress}</code>
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {/* Actions */}
-        <div className="flex gap-4">
-          <Button variant="outline" onClick={validate}>
-            Validate
-          </Button>
-          <Button onClick={importMultisig} disabled={!validated || loading}>
-            {loading ? "Importing..." : "Import"}
-          </Button>
-        </div>
+      <CardContent>
+        <Tabs defaultValue="lookup">
+          <TabsList className="mb-4">
+            <TabsTrigger value="lookup">Lookup by Address</TabsTrigger>
+            <TabsTrigger value="manual">Manual Import</TabsTrigger>
+          </TabsList>
+          <TabsContent value="lookup">
+            <LookupImporter />
+          </TabsContent>
+          <TabsContent value="manual">
+            <ManualImporter />
+          </TabsContent>
+        </Tabs>
       </CardContent>
     </Card>
   );
