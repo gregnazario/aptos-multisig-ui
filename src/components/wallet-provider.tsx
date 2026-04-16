@@ -24,6 +24,8 @@ interface MultisigWalletContextValue {
   connected: boolean;
   address: string | null;
   publicKey: string | null;
+  /** Non-null if the connected wallet uses a non-Ed25519 key (keyless, etc.) */
+  keyError: string | null;
   network: AptosNetwork;
   switchNetwork: (network: AptosNetwork) => void;
   sessionToken: string | null;
@@ -48,7 +50,18 @@ function MultisigWalletInner({
   const tokenRef = useRef<string | null>(null);
 
   const address = adapter.account?.address?.toString() ?? null;
-  const publicKey = adapter.account?.publicKey?.toString() ?? null;
+  const rawPublicKey = adapter.account?.publicKey?.toString() ?? null;
+
+  // Validate Ed25519: exactly 32 bytes = 0x + 64 hex chars.
+  // Keyless wallets (Aptos Connect, Google login) produce longer keys
+  // that are incompatible with MultiEd25519 signing.
+  const isEd25519 =
+    rawPublicKey !== null &&
+    /^0x[0-9a-fA-F]{64}$/.test(rawPublicKey);
+  const publicKey = isEd25519 ? rawPublicKey : null;
+  const keyError = adapter.connected && rawPublicKey && !isEd25519
+    ? "This wallet uses a keyless or non-Ed25519 key, which is incompatible with MultiEd25519 multisig. Please use a standard Ed25519 wallet (e.g., Petra with a mnemonic/private key)."
+    : null;
 
   const switchNetwork = useCallback(
     (net: AptosNetwork) => {
@@ -108,6 +121,7 @@ function MultisigWalletInner({
         connected: adapter.connected,
         address,
         publicKey,
+        keyError,
         network: selectedNetwork,
         switchNetwork,
         sessionToken,

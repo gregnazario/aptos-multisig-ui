@@ -12,7 +12,24 @@ import { useWallet } from "@/components/wallet-provider";
 
 export function ConnectWalletButton() {
   const adapter = useAdapterWallet();
-  const { address } = useWallet();
+  const { address, keyError } = useWallet();
+
+  if (adapter.connected && keyError) {
+    return (
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-destructive max-w-48 leading-tight">
+          Non-Ed25519 key detected
+        </span>
+        <Button
+          variant="destructive"
+          size="sm"
+          onClick={() => adapter.disconnect()}
+        >
+          Disconnect
+        </Button>
+      </div>
+    );
+  }
 
   if (adapter.connected && address) {
     return (
