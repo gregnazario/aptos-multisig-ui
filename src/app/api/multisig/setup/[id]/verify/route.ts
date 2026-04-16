@@ -41,6 +41,20 @@ export async function POST(
     );
   }
 
+  // 0. Validate the public key is a standard Ed25519 key (32 bytes = 0x + 64 hex).
+  // Keyless wallets (Aptos Connect, Google login) produce longer keys that are
+  // incompatible with MultiEd25519 multisig.
+  const pkHex = publicKey.replace(/^0x/, "");
+  if (pkHex.length !== 64 || !/^[0-9a-fA-F]+$/.test(pkHex)) {
+    return NextResponse.json(
+      {
+        error:
+          "Invalid public key: only standard Ed25519 keys (32 bytes) are supported. Keyless wallets (Aptos Connect, Google login) are not compatible with MultiEd25519 multisig.",
+      },
+      { status: 400 },
+    );
+  }
+
   // 1. Setup exists and is pending
   const setup = await db.query.multisigSetups.findFirst({
     where: eq(multisigSetups.id, id),
