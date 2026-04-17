@@ -73,7 +73,19 @@ export function ConnectWalletButton() {
     return <Button disabled>Loading...</Button>;
   }
 
-  const availableWallets = adapter.wallets;
+  // Filter out keyless/social login wallets — they use non-Ed25519 keys
+  // which are incompatible with MultiEd25519 multisig.
+  const BLOCKED_WALLETS = [
+    "continue with google",
+    "continue with apple",
+    "petra web",
+    "aptos connect",
+    "google",
+    "apple",
+  ];
+  const availableWallets = adapter.wallets.filter(
+    (w) => !BLOCKED_WALLETS.includes(w.name.toLowerCase()),
+  );
 
   async function handleOKXConnect() {
     setOkxConnecting(true);
