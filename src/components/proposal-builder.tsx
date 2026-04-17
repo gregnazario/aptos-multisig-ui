@@ -1,9 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
+import { AbiFunctionForm } from "@/components/abi-function-form";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -20,6 +28,14 @@ interface ProposalBuilderProps {
   publicKeys: string[];
 }
 
+interface SimulationResult {
+  success: boolean;
+  vmStatus: string;
+  gasUsed: string;
+  events: { type: string; data: unknown }[];
+  changes: { type: string; address?: string; resource?: string }[];
+}
+
 export function ProposalBuilder({
   multisigAddress,
   network,
@@ -33,17 +49,87 @@ export function ProposalBuilder({
   const [moduleAddress, setModuleAddress] = useState("0x1");
   const [moduleName, setModuleName] = useState("aptos_account");
   const [functionName, setFunctionName] = useState("transfer");
-  const [typeArgs, setTypeArgs] = useState("");
-  const [functionArgs, setFunctionArgs] = useState("");
   const [maxGas, setMaxGas] = useState(10000);
   const [gasPrice, setGasPrice] = useState(100);
   const [expirationHours, setExpirationHours] = useState(24);
   const [feePayerAddress, setFeePayerAddress] = useState("");
 
+  // ABI-driven form state
+  const [abiTypeArgs, setAbiTypeArgs] = useState<string[]>([]);
+  const [abiArgs, setAbiArgs] = useState<string[]>([]);
+  const [abiData, setAbiData] = useState<{
+    isEntry: boolean;
+    params: string[];
+  } | null>(null);
+
+  // Simulation
+  const [simulating, setSimulating] = useState(false);
+  const [simulation, setSimulation] = useState<SimulationResult | null>(null);
+  const [simError, setSimError] = useState<string | null>(null);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successUrl, setSuccessUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+
+  const handleAbiChange = useCallback(
+    (values: {
+      typeArgs: string[];
+      args: string[];
+      abi: { isEntry: boolean; params: string[] } | null;
+    }) => {
+      setAbiTypeArgs(values.typeArgs);
+      setAbiArgs(values.args);
+      setAbiData(values.abi);
+      // Clear previous simulation when inputs change
+      setSimulation(null);
+      setSimError(null);
+    },
+    [],
+  );
+
+  function buildPayload() {
+    return {
+      module: `${moduleAddress.trim()}::${moduleName.trim()}`,
+      function: functionName.trim(),
+      typeArgs: abiTypeArgs.filter(Boolean),
+      args: abiArgs.filter((a) => a !== ""),
+    };
+  }
+
+  async function handleSimulate() {
+    setSimulating(true);
+    setSimulation(null);
+    setSimError(null);
+
+    try {
+      const payload = buildPayload();
+      const res = await fetch("/api/multisig/simulate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          multisigAddress,
+          network,
+          payload,
+          maxGasAmount: maxGas,
+          gasUnitPrice: gasPrice,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setSimError(data.error ?? "Simulation failed");
+      } else {
+        setSimulation(data);
+      }
+    } catch (err) {
+      setSimError(
+        err instanceof Error ? err.message : "Simulation failed",
+      );
+    } finally {
+      setSimulating(false);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -52,30 +138,21 @@ export function ProposalBuilder({
     setLoading(true);
 
     try {
-      // Validate required fields
       if (!description.trim()) {
         throw new Error("Description is required.");
       }
-      if (!moduleAddress.trim() || !moduleName.trim() || !functionName.trim()) {
+      if (
+        !moduleAddress.trim() ||
+        !moduleName.trim() ||
+        !functionName.trim()
+      ) {
         throw new Error(
           "Module address, module name, and function name are required.",
         );
       }
 
-      const payload = {
-        module: `${moduleAddress.trim()}::${moduleName.trim()}`,
-        function: functionName.trim(),
-        typeArgs: typeArgs
-          .split(",")
-          .map((s) => s.trim())
-          .filter(Boolean),
-        args: functionArgs
-          .split(",")
-          .map((s) => s.trim())
-          .filter(Boolean),
-      };
+      const payload = buildPayload();
 
-      // Build the transaction server-side
       const buildRes = await fetch("/api/multisig/build-tx", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -98,7 +175,6 @@ export function ProposalBuilder({
       const built = await buildRes.json();
 
       if (mode === "url") {
-        // URL mode: encode everything into a shareable URL — no DB
         const urlData: UrlProposalData = {
           pks: publicKeys,
           th: threshold,
@@ -115,10 +191,8 @@ export function ProposalBuilder({
         };
 
         const urlPath = encodeProposalUrl(urlData);
-        const fullUrl = `${window.location.origin}${urlPath}`;
-        setSuccessUrl(fullUrl);
+        setSuccessUrl(`${window.location.origin}${urlPath}`);
       } else {
-        // Server mode: store in database
         const token = await verifyIdentity();
 
         const res = await fetch(
@@ -148,13 +222,12 @@ export function ProposalBuilder({
         }
 
         const data = await res.json();
-        const fullUrl = `${window.location.origin}${data.url}`;
-        setSuccessUrl(fullUrl);
+        setSuccessUrl(`${window.location.origin}${data.url}`);
       }
     } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : "An unexpected error occurred.";
-      setError(message);
+      setError(
+        err instanceof Error ? err.message : "An unexpected error occurred.",
+      );
     } finally {
       setLoading(false);
     }
@@ -166,9 +239,7 @@ export function ProposalBuilder({
       await navigator.clipboard.writeText(successUrl);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // Fallback: select text in a temporary input
-    }
+    } catch {}
   }
 
   // Success state
@@ -182,9 +253,10 @@ export function ProposalBuilder({
         <CardContent className="space-y-4">
           <Alert>
             <AlertDescription>
-              Share this link with signers. All proposal data is encoded in the
-              URL — no server storage needed. Each signer opens the link, signs,
-              and gets an updated URL with their signature to pass along.
+              Share this link with signers.{" "}
+              {mode === "url"
+                ? "All data is encoded in the URL — no server needed."
+                : "Proposal stored on server."}
             </AlertDescription>
           </Alert>
 
@@ -203,7 +275,7 @@ export function ProposalBuilder({
           </div>
 
           <p className="text-sm text-muted-foreground">
-            {threshold}-of-{publicKeys.length} signatures required to execute.
+            {threshold}-of-{publicKeys.length} signatures required.
           </p>
 
           <div className="flex gap-3">
@@ -226,194 +298,298 @@ export function ProposalBuilder({
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Create Proposal</CardTitle>
-      </CardHeader>
-      <CardContent>
-        {!connected && (
-          <Alert>
-            <AlertDescription>
-              Please connect your wallet to create a proposal.
-            </AlertDescription>
-          </Alert>
-        )}
+    <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>Create Proposal</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {!connected && (
+            <Alert>
+              <AlertDescription>
+                Connect your wallet to create a proposal.
+              </AlertDescription>
+            </Alert>
+          )}
 
-        {connected && (
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Storage mode */}
-            <div className="flex items-center gap-3 rounded-md border p-3">
-              <Label className="text-sm font-medium shrink-0">Storage:</Label>
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant={mode === "url" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setMode("url")}
-                >
-                  URL (no server)
+          {connected && (
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Storage mode */}
+              <div className="flex items-center gap-3 rounded-md border p-3">
+                <Label className="text-sm font-medium shrink-0">
+                  Storage:
+                </Label>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant={mode === "url" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setMode("url")}
+                  >
+                    URL (no server)
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={mode === "server" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setMode("server")}
+                  >
+                    Server
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {mode === "url"
+                    ? "All data in the link."
+                    : "Stored on server."}
+                </p>
+              </div>
+
+              {/* Description */}
+              <div className="space-y-2">
+                <Label htmlFor="description">Description</Label>
+                <Textarea
+                  id="description"
+                  placeholder="What does this transaction do?"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  required
+                />
+              </div>
+
+              {/* Entry Function selector */}
+              <div className="space-y-4 rounded-md border p-4">
+                <h3 className="text-sm font-medium">Entry Function</h3>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="moduleAddress">Module Address</Label>
+                    <Input
+                      id="moduleAddress"
+                      placeholder="0x1"
+                      value={moduleAddress}
+                      onChange={(e) => setModuleAddress(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="moduleName">Module Name</Label>
+                    <Input
+                      id="moduleName"
+                      placeholder="aptos_account"
+                      value={moduleName}
+                      onChange={(e) => setModuleName(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="functionName">Function Name</Label>
+                    <Input
+                      id="functionName"
+                      placeholder="transfer"
+                      value={functionName}
+                      onChange={(e) => setFunctionName(e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* ABI-driven parameter inputs */}
+                <AbiFunctionForm
+                  moduleAddress={moduleAddress.trim()}
+                  moduleName={moduleName.trim()}
+                  functionName={functionName.trim()}
+                  onChange={handleAbiChange}
+                />
+              </div>
+
+              {/* Gas & Expiration */}
+              <div className="space-y-4 rounded-md border p-4">
+                <h3 className="text-sm font-medium">Transaction Options</h3>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="maxGas">Max Gas</Label>
+                    <Input
+                      id="maxGas"
+                      type="number"
+                      min={1}
+                      value={maxGas}
+                      onChange={(e) => setMaxGas(Number(e.target.value))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="gasPrice">Gas Price</Label>
+                    <Input
+                      id="gasPrice"
+                      type="number"
+                      min={1}
+                      value={gasPrice}
+                      onChange={(e) => setGasPrice(Number(e.target.value))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="expirationHours">Expiration (hours)</Label>
+                    <Input
+                      id="expirationHours"
+                      type="number"
+                      min={1}
+                      value={expirationHours}
+                      onChange={(e) =>
+                        setExpirationHours(Number(e.target.value))
+                      }
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="feePayerAddress">
+                    Fee Payer Address{" "}
+                    <span className="text-muted-foreground">(optional)</span>
+                  </Label>
+                  <Input
+                    id="feePayerAddress"
+                    placeholder="0x..."
+                    value={feePayerAddress}
+                    onChange={(e) => setFeePayerAddress(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              {/* Error */}
+              {error && (
+                <Alert variant="destructive">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+
+              {/* Actions */}
+              <div className="flex gap-3">
+                <Button type="submit" disabled={loading} className="flex-1">
+                  {loading ? "Creating Proposal..." : "Create Proposal"}
                 </Button>
                 <Button
                   type="button"
-                  variant={mode === "server" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setMode("server")}
+                  variant="outline"
+                  onClick={handleSimulate}
+                  disabled={
+                    simulating ||
+                    !moduleAddress.trim() ||
+                    !moduleName.trim() ||
+                    !functionName.trim()
+                  }
                 >
-                  Server
+                  {simulating ? "Simulating..." : "Simulate"}
                 </Button>
               </div>
-              <p className="text-xs text-muted-foreground">
-                {mode === "url"
-                  ? "All data encoded in the link. No database needed."
-                  : "Stored on server. Better for large payloads."}
-              </p>
+            </form>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Simulation results */}
+      {(simulation || simError || simulating) && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base">Simulation</CardTitle>
+              {simulating && (
+                <Badge variant="secondary">Simulating...</Badge>
+              )}
+              {simulation && (
+                <Badge
+                  className={
+                    simulation.success
+                      ? "bg-green-600 text-white"
+                      : "bg-red-600 text-white"
+                  }
+                >
+                  {simulation.success ? "Success" : "Failed"}
+                </Badge>
+              )}
             </div>
-
-            {/* Description */}
-            <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
-                placeholder="What does this transaction do?"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                required
-              />
-            </div>
-
-            {/* Entry Function */}
-            <div className="space-y-4 rounded-md border p-4">
-              <h3 className="text-sm font-medium">Entry Function</h3>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="moduleAddress">Module Address</Label>
-                  <Input
-                    id="moduleAddress"
-                    placeholder="0x1"
-                    value={moduleAddress}
-                    onChange={(e) => setModuleAddress(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="moduleName">Module Name</Label>
-                  <Input
-                    id="moduleName"
-                    placeholder="aptos_account"
-                    value={moduleName}
-                    onChange={(e) => setModuleName(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="functionName">Function Name</Label>
-                  <Input
-                    id="functionName"
-                    placeholder="transfer"
-                    value={functionName}
-                    onChange={(e) => setFunctionName(e.target.value)}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="typeArgs">
-                  Type Arguments{" "}
-                  <span className="text-muted-foreground">
-                    (comma-separated, optional)
-                  </span>
-                </Label>
-                <Input
-                  id="typeArgs"
-                  placeholder="0x1::aptos_coin::AptosCoin"
-                  value={typeArgs}
-                  onChange={(e) => setTypeArgs(e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="functionArgs">
-                  Function Arguments{" "}
-                  <span className="text-muted-foreground">
-                    (comma-separated)
-                  </span>
-                </Label>
-                <Input
-                  id="functionArgs"
-                  placeholder="0xrecipient, 1000000"
-                  value={functionArgs}
-                  onChange={(e) => setFunctionArgs(e.target.value)}
-                />
-              </div>
-            </div>
-
-            {/* Gas & Expiration */}
-            <div className="space-y-4 rounded-md border p-4">
-              <h3 className="text-sm font-medium">Transaction Options</h3>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="maxGas">Max Gas</Label>
-                  <Input
-                    id="maxGas"
-                    type="number"
-                    min={1}
-                    value={maxGas}
-                    onChange={(e) => setMaxGas(Number(e.target.value))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="gasPrice">Gas Price</Label>
-                  <Input
-                    id="gasPrice"
-                    type="number"
-                    min={1}
-                    value={gasPrice}
-                    onChange={(e) => setGasPrice(Number(e.target.value))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="expirationHours">Expiration (hours)</Label>
-                  <Input
-                    id="expirationHours"
-                    type="number"
-                    min={1}
-                    value={expirationHours}
-                    onChange={(e) => setExpirationHours(Number(e.target.value))}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="feePayerAddress">
-                  Fee Payer Address{" "}
-                  <span className="text-muted-foreground">(optional)</span>
-                </Label>
-                <Input
-                  id="feePayerAddress"
-                  placeholder="0x..."
-                  value={feePayerAddress}
-                  onChange={(e) => setFeePayerAddress(e.target.value)}
-                />
-              </div>
-            </div>
-
-            {/* Error */}
-            {error && (
+            <CardDescription>
+              Preview of what this transaction would do.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {simError && (
               <Alert variant="destructive">
-                <AlertDescription>{error}</AlertDescription>
+                <AlertDescription className="text-xs">
+                  {simError}
+                </AlertDescription>
               </Alert>
             )}
 
-            {/* Submit */}
-            <Button type="submit" disabled={loading} className="w-full">
-              {loading ? "Creating Proposal..." : "Create Proposal"}
-            </Button>
-          </form>
-        )}
-      </CardContent>
-    </Card>
+            {simulation && (
+              <>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Status: </span>
+                    <span
+                      className={
+                        simulation.success
+                          ? "text-green-600"
+                          : "text-red-600"
+                      }
+                    >
+                      {simulation.vmStatus}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Gas Used: </span>
+                    {simulation.gasUsed}
+                  </div>
+                </div>
+
+                {simulation.events.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">
+                      Events ({simulation.events.length})
+                    </p>
+                    <div className="max-h-48 overflow-y-auto rounded-md border bg-muted/50 p-2 space-y-2">
+                      {simulation.events.map((event, i) => (
+                        <div key={i} className="text-xs">
+                          <code className="text-primary font-medium">
+                            {event.type}
+                          </code>
+                          <pre className="mt-1 text-muted-foreground overflow-x-auto">
+                            {JSON.stringify(event.data, null, 2)}
+                          </pre>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {simulation.changes.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">
+                      State Changes ({simulation.changes.length})
+                    </p>
+                    <div className="max-h-36 overflow-y-auto rounded-md border bg-muted/50 p-2 space-y-1">
+                      {simulation.changes.map((change, i) => (
+                        <div key={i} className="text-xs">
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] mr-1"
+                          >
+                            {change.type}
+                          </Badge>
+                          {change.resource && (
+                            <code className="text-muted-foreground">
+                              {change.resource}
+                            </code>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </CardContent>
+        </Card>
+      )}
+    </div>
   );
 }
