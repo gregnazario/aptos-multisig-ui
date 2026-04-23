@@ -16,12 +16,26 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const { publicKeys, threshold, network, label, expectedAddress } = body as {
+  const {
+    publicKeys,
+    threshold,
+    network,
+    label,
+    expectedAddress,
+    skipVerification,
+  } = body as {
     publicKeys?: string[];
     threshold?: number;
     network?: string;
     label?: string;
     expectedAddress?: string;
+    /**
+     * When true, bypass the signer-proof auth check. Intended for registering
+     * multisigs that already exist on-chain where the caller is not a signer
+     * (e.g. an operator tracking a multisig they don't control). Does not
+     * bypass the derived-address math check.
+     */
+    skipVerification?: boolean;
   };
 
   // Validate publicKeys
@@ -59,14 +73,18 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Require the caller to prove ownership of one of the public keys by
-  // signing a message. This keeps random third parties from registering
-  // arbitrary multisigs into our DB.
-  const auth = await verifySigner(
-    request.headers.get("authorization"),
-    publicKeys,
-  );
-  if (!auth.ok) return auth.response;
+  // By default, require the caller to prove ownership of one of the public
+  // keys by signing a message. This keeps random third parties from
+  // registering arbitrary multisigs into our DB. Can be opted out of when
+  // tracking a multisig that already exists on-chain but the caller is not
+  // a signer.
+  if (!skipVerification) {
+    const auth = await verifySigner(
+      request.headers.get("authorization"),
+      publicKeys,
+    );
+    if (!auth.ok) return auth.response;
+  }
 
   // Derive the multisig address
   let address: string;

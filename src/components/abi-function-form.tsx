@@ -163,56 +163,72 @@ export function AbiFunctionForm({
   const [typeArgs, setTypeArgs] = useState<string[]>(initialTypeArgs ?? []);
   const [args, setArgs] = useState<string[]>(initialArgs ?? []);
 
-  // Fetch ABI when function changes
-  const fetchAbi = useCallback(async () => {
-    if (!moduleAddress || !moduleName || !functionName) {
-      setAbi(null);
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const module = `${moduleAddress}::${moduleName}`;
-      const res = await fetch(
-        `/api/multisig/abi?module=${encodeURIComponent(module)}&function=${encodeURIComponent(functionName)}&network=${network}`,
-      );
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.error ?? "Failed to fetch ABI");
+  // Fetch ABI when function changes. Debounced so we don't spam the API
+  // on every keystroke, and race-protected so an in-flight older request
+  // can't overwrite newer results.
+  const fetchAbi = useCallback(
+    async (signal: AbortSignal) => {
+      if (!moduleAddress || !moduleName || !functionName) {
         setAbi(null);
+        setError(null);
+        setLoading(false);
         return;
       }
 
-      setAbi(data);
+      setLoading(true);
+      setError(null);
 
-      // Initialize arg arrays to match param count
-      setTypeArgs((prev) => {
-        const next = Array.from(
-          { length: data.genericTypeParams },
-          (_, i) => prev[i] ?? "",
+      try {
+        const module = `${moduleAddress}::${moduleName}`;
+        const res = await fetch(
+          `/api/multisig/abi?module=${encodeURIComponent(module)}&function=${encodeURIComponent(functionName)}&network=${network}`,
+          { signal },
         );
-        return next;
-      });
-      setArgs((prev) => {
-        const next = Array.from(
-          { length: data.params.length },
-          (_, i) => prev[i] ?? "",
-        );
-        return next;
-      });
-    } catch {
-      setError("Failed to fetch function ABI");
-      setAbi(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [moduleAddress, moduleName, functionName, network]);
+        const data = await res.json();
+
+        if (!res.ok) {
+          setError(data.error ?? "Failed to fetch ABI");
+          setAbi(null);
+          return;
+        }
+
+        setAbi(data);
+
+        // Initialize arg arrays to match param count
+        setTypeArgs((prev) => {
+          const next = Array.from(
+            { length: data.genericTypeParams },
+            (_, i) => prev[i] ?? "",
+          );
+          return next;
+        });
+        setArgs((prev) => {
+          const next = Array.from(
+            { length: data.params.length },
+            (_, i) => prev[i] ?? "",
+          );
+          return next;
+        });
+      } catch (err) {
+        if ((err as Error).name === "AbortError") return;
+        setError("Failed to fetch function ABI");
+        setAbi(null);
+      } finally {
+        if (!signal.aborted) setLoading(false);
+      }
+    },
+    [moduleAddress, moduleName, functionName, network],
+  );
 
   useEffect(() => {
-    fetchAbi();
+    const controller = new AbortController();
+    const timeout = setTimeout(() => {
+      fetchAbi(controller.signal);
+    }, 500);
+    return () => {
+      clearTimeout(timeout);
+      controller.abort();
+    };
   }, [fetchAbi]);
 
   // Notify parent when values change
@@ -247,7 +263,11 @@ export function AbiFunctionForm({
       <Alert variant="destructive">
         <AlertDescription className="space-y-2">
           <p>{error}</p>
-          <Button variant="outline" size="sm" onClick={fetchAbi}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => fetchAbi(new AbortController().signal)}
+          >
             Retry
           </Button>
         </AlertDescription>

@@ -36,6 +36,7 @@ function LookupImporter() {
     sourceTxn: string;
   } | null>(null);
   const [importing, setImporting] = useState(false);
+  const [skipVerification, setSkipVerification] = useState(false);
 
   async function handleLookup() {
     setError(null);
@@ -73,18 +74,22 @@ function LookupImporter() {
     setImporting(true);
 
     try {
-      const token = await verifyIdentity();
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (!skipVerification) {
+        const token = await verifyIdentity();
+        headers.Authorization = `Bearer ${token}`;
+      }
       const res = await fetch("/api/multisig", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers,
         body: JSON.stringify({
           publicKeys: lookupResult.publicKeys,
           threshold: lookupResult.threshold,
           network,
           expectedAddress: lookupResult.address,
+          skipVerification: skipVerification || undefined,
         }),
       });
 
@@ -174,18 +179,42 @@ function LookupImporter() {
             {lookupResult.threshold} of {lookupResult.publicKeys.length}
           </div>
 
+          <label className="flex items-start gap-2 text-xs cursor-pointer">
+            <input
+              type="checkbox"
+              checked={skipVerification}
+              onChange={(e) => setSkipVerification(e.target.checked)}
+              className="mt-0.5"
+            />
+            <span>
+              <span className="font-medium">
+                Skip signer verification (read-only)
+              </span>
+              <span className="block text-muted-foreground">
+                Register an existing on-chain multisig without proving you are a
+                signer. Use for tracking multisigs you don&apos;t control.
+              </span>
+            </span>
+          </label>
+
           <Button
             onClick={handleImport}
-            disabled={importing || !connected}
-            title={!connected ? "Connect a signer wallet to import" : undefined}
+            disabled={importing || (!skipVerification && !connected)}
+            title={
+              !skipVerification && !connected
+                ? "Connect a signer wallet to import"
+                : undefined
+            }
           >
             {importing
               ? "Importing..."
-              : connected
-                ? "Sign to Import"
-                : "Connect Wallet to Import"}
+              : skipVerification
+                ? "Import (no verification)"
+                : connected
+                  ? "Sign to Import"
+                  : "Connect Wallet to Import"}
           </Button>
-          {!connected && (
+          {!skipVerification && !connected && (
             <p className="text-xs text-muted-foreground">
               Import requires a signature from one of the signers, to prove
               ownership before registering the multisig.
@@ -211,6 +240,7 @@ function ManualImporter() {
   const [warning, setWarning] = useState<string | null>(null);
   const [validated, setValidated] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [skipVerification, setSkipVerification] = useState(false);
 
   function parseKeys(): string[] {
     return keysText
@@ -300,18 +330,22 @@ function ManualImporter() {
     const keys = parseKeys();
 
     try {
-      const token = await verifyIdentity();
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (!skipVerification) {
+        const token = await verifyIdentity();
+        headers.Authorization = `Bearer ${token}`;
+      }
       const res = await fetch("/api/multisig", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers,
         body: JSON.stringify({
           publicKeys: keys,
           threshold,
           network,
           expectedAddress: expectedAddress || undefined,
+          skipVerification: skipVerification || undefined,
         }),
       });
 
@@ -404,23 +438,47 @@ function ManualImporter() {
         </Alert>
       )}
 
+      <label className="flex items-start gap-2 text-xs cursor-pointer">
+        <input
+          type="checkbox"
+          checked={skipVerification}
+          onChange={(e) => setSkipVerification(e.target.checked)}
+          className="mt-0.5"
+        />
+        <span>
+          <span className="font-medium">
+            Skip signer verification (read-only)
+          </span>
+          <span className="block text-muted-foreground">
+            Register an existing on-chain multisig without proving you are a
+            signer. Use for tracking multisigs you don&apos;t control.
+          </span>
+        </span>
+      </label>
+
       <div className="flex gap-4">
         <Button variant="outline" onClick={validate}>
           Validate
         </Button>
         <Button
           onClick={importMultisig}
-          disabled={!validated || loading || !connected}
-          title={!connected ? "Connect a signer wallet to import" : undefined}
+          disabled={!validated || loading || (!skipVerification && !connected)}
+          title={
+            !skipVerification && !connected
+              ? "Connect a signer wallet to import"
+              : undefined
+          }
         >
           {loading
             ? "Importing..."
-            : connected
-              ? "Sign to Import"
-              : "Connect Wallet to Import"}
+            : skipVerification
+              ? "Import (no verification)"
+              : connected
+                ? "Sign to Import"
+                : "Connect Wallet to Import"}
         </Button>
       </div>
-      {!connected && validated && (
+      {!skipVerification && !connected && validated && (
         <p className="text-xs text-muted-foreground">
           Import requires a signature from one of the signers, to prove
           ownership before registering the multisig.
