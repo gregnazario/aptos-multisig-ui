@@ -1,7 +1,8 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { ConnectWalletButton } from "@/components/connect-wallet-button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,8 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useWallet } from "@/components/wallet-provider";
-import { ConnectWalletButton } from "@/components/connect-wallet-button";
-import { type UrlProposalData, encodeProposalUrl } from "@/lib/url-state";
+import { encodeProposalUrl, type UrlProposalData } from "@/lib/url-state";
 
 interface MultisigOption {
   id: string;
@@ -29,7 +29,13 @@ interface MultisigOption {
 
 export default function ProposePage() {
   return (
-    <Suspense fallback={<div className="flex items-center justify-center py-16"><p className="text-muted-foreground">Loading...</p></div>}>
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center py-16">
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      }
+    >
       <ProposeContent />
     </Suspense>
   );
@@ -109,8 +115,14 @@ function ProposeContent() {
     const payload = {
       module: `${moduleAddress}::${moduleName}`,
       function: functionName,
-      typeArgs: typeArgs.split(",").map((s) => s.trim()).filter(Boolean),
-      args: args.split(",").map((s) => s.trim()).filter(Boolean),
+      typeArgs: typeArgs
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean),
+      args: args
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean),
     };
 
     setSimulating(true);
@@ -140,7 +152,18 @@ function ProposeContent() {
         setSimError(err instanceof Error ? err.message : "Simulation failed");
       })
       .finally(() => setSimulating(false));
-  }, [selectedMultisig, hasPayload, moduleAddress, moduleName, functionName, typeArgs, args, network, maxGas, gasPrice]);
+  }, [
+    selectedMultisig,
+    hasPayload,
+    moduleAddress,
+    moduleName,
+    functionName,
+    typeArgs,
+    args,
+    network,
+    maxGas,
+    gasPrice,
+  ]);
 
   async function handleCreate() {
     if (!selectedMultisig || !hasPayload) return;
@@ -201,7 +224,9 @@ function ProposeContent() {
       const urlPath = encodeProposalUrl(urlData);
       setSuccessUrl(`${window.location.origin}${urlPath}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create proposal");
+      setError(
+        err instanceof Error ? err.message : "Failed to create proposal",
+      );
     } finally {
       setCreating(false);
     }
@@ -392,9 +417,7 @@ function ProposeContent() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="text-base">Simulation</CardTitle>
-              {simulating && (
-                <Badge variant="secondary">Simulating...</Badge>
-              )}
+              {simulating && <Badge variant="secondary">Simulating...</Badge>}
               {simulation && (
                 <Badge
                   className={
@@ -409,13 +432,16 @@ function ProposeContent() {
             </div>
             <CardDescription>
               Preview of what this transaction would do when executed by{" "}
-              {selectedMultisig.label ?? selectedMultisig.address.slice(0, 10) + "..."}
+              {selectedMultisig.label ??
+                `${selectedMultisig.address.slice(0, 10)}...`}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             {simError && (
               <Alert variant="destructive">
-                <AlertDescription className="text-xs">{simError}</AlertDescription>
+                <AlertDescription className="text-xs">
+                  {simError}
+                </AlertDescription>
               </Alert>
             )}
 
@@ -424,7 +450,11 @@ function ProposeContent() {
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
                     <span className="text-muted-foreground">Status: </span>
-                    <span className={simulation.success ? "text-green-600" : "text-red-600"}>
+                    <span
+                      className={
+                        simulation.success ? "text-green-600" : "text-red-600"
+                      }
+                    >
                       {simulation.vmStatus}
                     </span>
                   </div>

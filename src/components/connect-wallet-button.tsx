@@ -45,7 +45,9 @@ export function ConnectWalletButton() {
   if (wallet.connectedVia === "okx" && address) {
     return (
       <div className="flex items-center gap-2">
-        <Badge variant="outline" className="text-[10px]">OKX</Badge>
+        <Badge variant="outline" className="text-[10px]">
+          OKX
+        </Badge>
         <Button
           variant="outline"
           onClick={() => {

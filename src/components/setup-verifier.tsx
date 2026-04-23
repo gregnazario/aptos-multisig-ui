@@ -28,7 +28,7 @@ interface SetupData {
 }
 
 export function SetupVerifier({ setupId }: { setupId: string }) {
-  const { connected, address, network } = useWallet();
+  const { connected, address } = useWallet();
   const adapter = useAdapterWallet();
 
   const [setupData, setSetupData] = useState<SetupData | null>(null);

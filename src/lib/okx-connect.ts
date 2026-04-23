@@ -19,9 +19,10 @@ export async function getOKXConnectUI(): Promise<OKXUniversalConnectUI> {
   uiInstance = await OKXUniversalConnectUI.init({
     dappMetaData: {
       name: "Aptos Multisig",
-      icon: typeof window !== "undefined"
-        ? `${window.location.origin}/favicon.ico`
-        : "",
+      icon:
+        typeof window !== "undefined"
+          ? `${window.location.origin}/favicon.ico`
+          : "",
     },
     actionsConfiguration: {
       returnStrategy: "none",
@@ -43,7 +44,8 @@ export interface OKXAccount {
 export async function connectOKX(network: string): Promise<OKXAccount> {
   const ui = await getOKXConnectUI();
 
-  const chainId = network === "mainnet" ? "1" : network === "testnet" ? "2" : "34";
+  const chainId =
+    network === "mainnet" ? "1" : network === "testnet" ? "2" : "34";
 
   const session = await ui.openModal({
     namespaces: {
@@ -70,9 +72,10 @@ export async function connectOKX(network: string): Promise<OKXAccount> {
 
   // Get public key - it may be in the session or we need to request it
   // OKX stores it in the account info
-  const publicKey = (session.namespaces.aptos as any).defaultChain?.publicKey
-    ?? (session as any).publicKey
-    ?? "";
+  const publicKey =
+    (session.namespaces.aptos as any).defaultChain?.publicKey ??
+    (session as any).publicKey ??
+    "";
 
   return { address, publicKey };
 }
@@ -87,7 +90,10 @@ export function isOKXConnected(): boolean {
   return uiInstance?.connected() ?? false;
 }
 
-export async function signMessageOKX(message: string, nonce: string): Promise<{
+export async function signMessageOKX(
+  message: string,
+  nonce: string,
+): Promise<{
   signature: string;
   fullMessage: string;
 }> {
@@ -107,11 +113,14 @@ export async function signMessageOKX(message: string, nonce: string): Promise<{
 
   return {
     signature: result.signature ?? result,
-    fullMessage: result.fullMessage ?? `APTOS\nmessage: ${message}\nnonce: ${nonce}`,
+    fullMessage:
+      result.fullMessage ?? `APTOS\nmessage: ${message}\nnonce: ${nonce}`,
   };
 }
 
-export async function signTransactionOKX(transactionBytes: Uint8Array): Promise<Uint8Array> {
+export async function signTransactionOKX(
+  transactionBytes: Uint8Array,
+): Promise<Uint8Array> {
   const ui = await getOKXConnectUI();
   if (!ui.connected()) throw new Error("OKX not connected");
 

@@ -17,7 +17,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useWallet } from "@/components/wallet-provider";
 import type { AptosNetwork } from "@/lib/aptos/client";
-import { type UrlProposalData, encodeProposalUrl } from "@/lib/url-state";
+import { encodeProposalUrl, type UrlProposalData } from "@/lib/url-state";
 
 type StorageMode = "url" | "server";
 
@@ -57,10 +57,6 @@ export function ProposalBuilder({
   // ABI-driven form state
   const [abiTypeArgs, setAbiTypeArgs] = useState<string[]>([]);
   const [abiArgs, setAbiArgs] = useState<string[]>([]);
-  const [abiData, setAbiData] = useState<{
-    isEntry: boolean;
-    params: string[];
-  } | null>(null);
 
   // Simulation
   const [simulating, setSimulating] = useState(false);
@@ -80,7 +76,6 @@ export function ProposalBuilder({
     }) => {
       setAbiTypeArgs(values.typeArgs);
       setAbiArgs(values.args);
-      setAbiData(values.abi);
       // Clear previous simulation when inputs change
       setSimulation(null);
       setSimError(null);
@@ -123,9 +118,7 @@ export function ProposalBuilder({
         setSimulation(data);
       }
     } catch (err) {
-      setSimError(
-        err instanceof Error ? err.message : "Simulation failed",
-      );
+      setSimError(err instanceof Error ? err.message : "Simulation failed");
     } finally {
       setSimulating(false);
     }
@@ -141,11 +134,7 @@ export function ProposalBuilder({
       if (!description.trim()) {
         throw new Error("Description is required.");
       }
-      if (
-        !moduleAddress.trim() ||
-        !moduleName.trim() ||
-        !functionName.trim()
-      ) {
+      if (!moduleAddress.trim() || !moduleName.trim() || !functionName.trim()) {
         throw new Error(
           "Module address, module name, and function name are required.",
         );
@@ -316,9 +305,7 @@ export function ProposalBuilder({
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Storage mode */}
               <div className="flex items-center gap-3 rounded-md border p-3">
-                <Label className="text-sm font-medium shrink-0">
-                  Storage:
-                </Label>
+                <Label className="text-sm font-medium shrink-0">Storage:</Label>
                 <div className="flex gap-2">
                   <Button
                     type="button"
@@ -492,9 +479,7 @@ export function ProposalBuilder({
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="text-base">Simulation</CardTitle>
-              {simulating && (
-                <Badge variant="secondary">Simulating...</Badge>
-              )}
+              {simulating && <Badge variant="secondary">Simulating...</Badge>}
               {simulation && (
                 <Badge
                   className={
@@ -527,9 +512,7 @@ export function ProposalBuilder({
                     <span className="text-muted-foreground">Status: </span>
                     <span
                       className={
-                        simulation.success
-                          ? "text-green-600"
-                          : "text-red-600"
+                        simulation.success ? "text-green-600" : "text-red-600"
                       }
                     >
                       {simulation.vmStatus}
@@ -569,10 +552,7 @@ export function ProposalBuilder({
                     <div className="max-h-36 overflow-y-auto rounded-md border bg-muted/50 p-2 space-y-1">
                       {simulation.changes.map((change, i) => (
                         <div key={i} className="text-xs">
-                          <Badge
-                            variant="outline"
-                            className="text-[10px] mr-1"
-                          >
+                          <Badge variant="outline" className="text-[10px] mr-1">
                             {change.type}
                           </Badge>
                           {change.resource && (

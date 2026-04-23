@@ -3,6 +3,7 @@
 import { useWallet as useAdapterWallet } from "@aptos-labs/wallet-adapter-react";
 import { useCallback, useEffect, useState } from "react";
 import { SignerStatusGrid } from "@/components/signer-status-grid";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,14 +14,13 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useWallet } from "@/components/wallet-provider";
 import {
-  type UrlProposalData,
   addSignatureToUrl,
   decodeProposalUrl,
   hasSignerSigned,
   hasThreshold,
+  type UrlProposalData,
 } from "@/lib/url-state";
 
 function findSignerIndexClient(
@@ -109,9 +109,7 @@ export function UrlProposalView() {
       const bcsBytes = authenticator.bcsToBytes();
       const sigBytes = bcsBytes.slice(-64);
       if (sigBytes.length !== 64) {
-        throw new Error(
-          `Expected 64-byte signature, got ${sigBytes.length}`,
-        );
+        throw new Error(`Expected 64-byte signature, got ${sigBytes.length}`);
       }
       const sigHex =
         "0x" +
@@ -450,10 +448,7 @@ export function UrlProposalView() {
       )}
 
       <div className="pt-2">
-        <Button
-          variant="outline"
-          onClick={() => (window.location.href = "/")}
-        >
+        <Button variant="outline" onClick={() => (window.location.href = "/")}>
           Back to Home
         </Button>
       </div>
