@@ -23,7 +23,7 @@ const ADDRESS_REGEX = /^0x[0-9a-fA-F]{1,64}$/;
 // ── Lookup by Address ─────────────────────────────────────────────────
 
 function LookupImporter() {
-  const { network } = useWallet();
+  const { network, connected, verifyIdentity } = useWallet();
   const router = useRouter();
 
   const [address, setAddress] = useState("");
@@ -73,9 +73,13 @@ function LookupImporter() {
     setImporting(true);
 
     try {
+      const token = await verifyIdentity();
       const res = await fetch("/api/multisig", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({
           publicKeys: lookupResult.publicKeys,
           threshold: lookupResult.threshold,
@@ -93,8 +97,8 @@ function LookupImporter() {
 
       const data = await res.json();
       router.push(`/multisig/${data.address}?network=${network}`);
-    } catch {
-      setError("Import failed.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Import failed.");
       setImporting(false);
     }
   }
@@ -170,9 +174,23 @@ function LookupImporter() {
             {lookupResult.threshold} of {lookupResult.publicKeys.length}
           </div>
 
-          <Button onClick={handleImport} disabled={importing}>
-            {importing ? "Importing..." : "Import Multisig"}
+          <Button
+            onClick={handleImport}
+            disabled={importing || !connected}
+            title={!connected ? "Connect a signer wallet to import" : undefined}
+          >
+            {importing
+              ? "Importing..."
+              : connected
+                ? "Sign to Import"
+                : "Connect Wallet to Import"}
           </Button>
+          {!connected && (
+            <p className="text-xs text-muted-foreground">
+              Import requires a signature from one of the signers, to prove
+              ownership before registering the multisig.
+            </p>
+          )}
         </div>
       )}
     </div>
@@ -182,7 +200,7 @@ function LookupImporter() {
 // ── Manual Import (existing) ──────────────────────────────────────────
 
 function ManualImporter() {
-  const { network } = useWallet();
+  const { network, connected, verifyIdentity } = useWallet();
   const router = useRouter();
 
   const [keysText, setKeysText] = useState("");
@@ -282,9 +300,13 @@ function ManualImporter() {
     const keys = parseKeys();
 
     try {
+      const token = await verifyIdentity();
       const res = await fetch("/api/multisig", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({
           publicKeys: keys,
           threshold,
@@ -302,8 +324,12 @@ function ManualImporter() {
 
       const data = await res.json();
       router.push(`/multisig/${data.address}?network=${network}`);
-    } catch {
-      setError("Failed to import multisig. Please try again.");
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to import multisig. Please try again.",
+      );
       setLoading(false);
     }
   }
@@ -382,10 +408,24 @@ function ManualImporter() {
         <Button variant="outline" onClick={validate}>
           Validate
         </Button>
-        <Button onClick={importMultisig} disabled={!validated || loading}>
-          {loading ? "Importing..." : "Import"}
+        <Button
+          onClick={importMultisig}
+          disabled={!validated || loading || !connected}
+          title={!connected ? "Connect a signer wallet to import" : undefined}
+        >
+          {loading
+            ? "Importing..."
+            : connected
+              ? "Sign to Import"
+              : "Connect Wallet to Import"}
         </Button>
       </div>
+      {!connected && validated && (
+        <p className="text-xs text-muted-foreground">
+          Import requires a signature from one of the signers, to prove
+          ownership before registering the multisig.
+        </p>
+      )}
     </div>
   );
 }

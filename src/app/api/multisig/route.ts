@@ -2,6 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { v4 as uuid } from "uuid";
 import { deriveMultisigAddress } from "@/lib/aptos/multisig";
+import { verifySigner } from "@/lib/auth/verify-signer";
 import { db } from "@/lib/db";
 import { multisigs } from "@/lib/db/schema";
 
@@ -57,6 +58,15 @@ export async function POST(request: NextRequest) {
       { status: 400 },
     );
   }
+
+  // Require the caller to prove ownership of one of the public keys by
+  // signing a message. This keeps random third parties from registering
+  // arbitrary multisigs into our DB.
+  const auth = await verifySigner(
+    request.headers.get("authorization"),
+    publicKeys,
+  );
+  if (!auth.ok) return auth.response;
 
   // Derive the multisig address
   let address: string;

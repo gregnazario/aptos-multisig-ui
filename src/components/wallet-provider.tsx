@@ -13,7 +13,6 @@ import {
   useState,
 } from "react";
 import type { AptosNetwork } from "@/lib/aptos/client";
-import { signMessageOKX } from "@/lib/okx-connect";
 
 const networkToEnum: Record<AptosNetwork, Network> = {
   mainnet: Network.MAINNET,
@@ -27,16 +26,10 @@ interface MultisigWalletContextValue {
   publicKey: string | null;
   /** Non-null if the connected wallet uses a non-Ed25519 key */
   keyError: string | null;
-  /** Which wallet is connected: "adapter" (Petra etc.), "okx", or null */
-  connectedVia: "adapter" | "okx" | null;
   network: AptosNetwork;
   switchNetwork: (network: AptosNetwork) => void;
   sessionToken: string | null;
   verifyIdentity: () => Promise<string>;
-  /** Set OKX connection state (called from connect button) */
-  setOKXConnection: (address: string, publicKey: string) => void;
-  /** Clear OKX connection state */
-  clearOKXConnection: () => void;
 }
 
 const MultisigWalletContext = createContext<MultisigWalletContextValue | null>(
@@ -56,38 +49,20 @@ function MultisigWalletInner({
   const [sessionToken, setSessionToken] = useState<string | null>(null);
   const tokenRef = useRef<string | null>(null);
 
-  // OKX Connect state
-  const [okxAddress, setOkxAddress] = useState<string | null>(null);
-  const [okxPublicKey, setOkxPublicKey] = useState<string | null>(null);
+  const address = adapter.connected
+    ? (adapter.account?.address?.toString() ?? null)
+    : null;
 
-  // Determine which connection is active
-  const connectedVia: "adapter" | "okx" | null = adapter.connected
-    ? "adapter"
-    : okxAddress
-      ? "okx"
-      : null;
-
-  // Resolve address/publicKey from whichever is connected
-  const address =
-    connectedVia === "adapter"
-      ? (adapter.account?.address?.toString() ?? null)
-      : connectedVia === "okx"
-        ? okxAddress
-        : null;
-
-  const rawPublicKey =
-    connectedVia === "adapter"
-      ? (adapter.account?.publicKey?.toString() ?? null)
-      : connectedVia === "okx"
-        ? okxPublicKey
-        : null;
+  const rawPublicKey = adapter.connected
+    ? (adapter.account?.publicKey?.toString() ?? null)
+    : null;
 
   // Validate Ed25519
   const isEd25519 =
     rawPublicKey !== null && /^0x[0-9a-fA-F]{64}$/.test(rawPublicKey);
   const publicKey = isEd25519 ? rawPublicKey : null;
   const keyError =
-    connectedVia && rawPublicKey && !isEd25519
+    adapter.connected && rawPublicKey && !isEd25519
       ? "This wallet uses a keyless or non-Ed25519 key, which is incompatible with MultiEd25519 multisig."
       : null;
 
@@ -96,50 +71,26 @@ function MultisigWalletInner({
       setSelectedNetwork(net);
       setSessionToken(null);
       tokenRef.current = null;
-      if (connectedVia === "adapter") {
+      if (adapter.connected) {
         adapter.changeNetwork(networkToEnum[net]).catch(() => {});
       }
     },
-    [adapter, connectedVia],
+    [adapter],
   );
-
-  const setOKXConnection = useCallback((addr: string, pk: string) => {
-    setOkxAddress(addr);
-    setOkxPublicKey(pk);
-    setSessionToken(null);
-    tokenRef.current = null;
-  }, []);
-
-  const clearOKXConnection = useCallback(() => {
-    setOkxAddress(null);
-    setOkxPublicKey(null);
-    setSessionToken(null);
-    tokenRef.current = null;
-  }, []);
 
   const verifyIdentity = useCallback(async (): Promise<string> => {
     if (tokenRef.current) return tokenRef.current;
-    if (!connectedVia || !address || !publicKey) {
+    if (!adapter.connected || !address || !publicKey) {
       throw new Error("Wallet not connected");
     }
 
     const nonce = crypto.randomUUID();
-    let signature: string;
-    let fullMessage: string;
-
-    if (connectedVia === "adapter") {
-      const signResult = await adapter.signMessage({
-        message: "Aptos Multisig Verification",
-        nonce,
-      });
-      signature = signResult.signature.toString();
-      fullMessage = signResult.fullMessage;
-    } else {
-      // OKX Connect
-      const result = await signMessageOKX("Aptos Multisig Verification", nonce);
-      signature = result.signature;
-      fullMessage = result.fullMessage;
-    }
+    const signResult = await adapter.signMessage({
+      message: "Aptos Multisig Verification",
+      nonce,
+    });
+    const signature = signResult.signature.toString();
+    const fullMessage = signResult.fullMessage;
 
     const res = await fetch("/api/verify", {
       method: "POST",
@@ -163,22 +114,19 @@ function MultisigWalletInner({
     setSessionToken(token);
     tokenRef.current = token;
     return token;
-  }, [adapter, connectedVia, address, publicKey, selectedNetwork]);
+  }, [adapter, address, publicKey, selectedNetwork]);
 
   return (
     <MultisigWalletContext.Provider
       value={{
-        connected: connectedVia !== null,
+        connected: adapter.connected,
         address,
         publicKey,
         keyError,
-        connectedVia,
         network: selectedNetwork,
         switchNetwork,
         sessionToken,
         verifyIdentity,
-        setOKXConnection,
-        clearOKXConnection,
       }}
     >
       {children}
