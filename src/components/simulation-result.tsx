@@ -1,5 +1,9 @@
 "use client";
 
+import {
+  type BalanceChange,
+  BalanceChanges,
+} from "@/components/balance-changes";
 import { Badge } from "@/components/ui/badge";
 
 export interface SimulationResultData {
@@ -8,6 +12,7 @@ export interface SimulationResultData {
   gasUsed: string;
   events: { type: string; data: unknown }[];
   changes: { type: string; address?: string; resource?: string }[];
+  balanceChanges?: BalanceChange[];
 }
 
 interface SimulationResultProps {
@@ -42,6 +47,10 @@ export function SimulationResult({
           {simulation.gasUsed}
         </div>
       </div>
+
+      {simulation.balanceChanges && simulation.balanceChanges.length > 0 && (
+        <BalanceChanges changes={simulation.balanceChanges} />
+      )}
 
       {simulation.events.length > 0 && (
         <div className="space-y-2">
