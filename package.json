@@ -17,8 +17,6 @@
     "@aptos-labs/wallet-adapter-react": "^8.3.3",
     "@base-ui/react": "^1.4.0",
     "@libsql/client": "^0.17.2",
-    "@okxconnect/ui": "^1.9.1",
-    "@okxconnect/universal-provider": "^1.9.1",
     "better-sqlite3": "^12.9.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

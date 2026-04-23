@@ -162,7 +162,7 @@ export function DappProxy({
         network,
         description: `dApp transaction: ${dappPayload.function ?? "unknown"}`,
         payload,
-        maxGasAmount: 10000,
+        maxGasAmount: 100000,
         gasUnitPrice: 100,
         expirationSeconds: 24 * 3600,
         source: "dapp",

@@ -44,12 +44,12 @@ export function ProposalBuilder({
 }: ProposalBuilderProps) {
   const { connected, verifyIdentity } = useWallet();
 
-  const [mode, setMode] = useState<StorageMode>("url");
+  const [mode, setMode] = useState<StorageMode>("server");
   const [description, setDescription] = useState("");
   const [moduleAddress, setModuleAddress] = useState("0x1");
   const [moduleName, setModuleName] = useState("aptos_account");
   const [functionName, setFunctionName] = useState("transfer");
-  const [maxGas, setMaxGas] = useState(10000);
+  const [maxGas, setMaxGas] = useState(100000);
   const [gasPrice, setGasPrice] = useState(100);
   const [expirationHours, setExpirationHours] = useState(24);
   const [feePayerAddress, setFeePayerAddress] = useState("");

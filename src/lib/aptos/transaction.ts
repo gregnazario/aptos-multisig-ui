@@ -42,7 +42,7 @@ export async function buildTransaction(
   const aptos = getAptosClient(config.network);
   const senderAddress = AccountAddress.from(config.multisigAddress);
   const expirationSeconds = config.expirationSeconds ?? 86400;
-  const maxGasAmount = config.maxGasAmount ?? 10000;
+  const maxGasAmount = config.maxGasAmount ?? 100000;
   const gasUnitPrice = config.gasUnitPrice ?? 100;
 
   const transaction = await aptos.transaction.build.simple({
