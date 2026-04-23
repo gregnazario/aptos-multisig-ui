@@ -56,12 +56,6 @@ export function combineSignatures(
   return new MultiEd25519Signature({ signatures: ed25519Sigs, bitmap });
 }
 
-export function findSignerIndex(
-  publicKeyHexes: string[],
-  signerPublicKeyHex: string,
-): number {
-  const normalized = signerPublicKeyHex.toLowerCase().replace(/^0x/, "");
-  return publicKeyHexes.findIndex(
-    (pk) => pk.toLowerCase().replace(/^0x/, "") === normalized,
-  );
-}
+// Re-export the pure client-safe helper so server callers that already
+// import from `@/lib/aptos/multisig` continue to work.
+export { findSignerIndex } from "./signing";

@@ -77,6 +77,10 @@ export function OfflineSigningPanel({
 
   const [payloadHex, setPayloadHex] = useState(rawTransactionBytes);
   const [signaturesJson, setSignaturesJson] = useState(initialSignaturesJson);
+  // Track whether the user has diverged from the parent-provided value.
+  // Once they have, polling refetches won't clobber their in-progress edit.
+  const [payloadDirty, setPayloadDirty] = useState(false);
+  const [signaturesDirty, setSignaturesDirty] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [results, setResults] = useState<SignatureCheck[] | null>(null);
   const [verifyError, setVerifyError] = useState<string | null>(null);
@@ -84,15 +88,14 @@ export function OfflineSigningPanel({
     null,
   );
 
-  // Keep the textareas in sync if the parent-provided values change
-  // (e.g. a new signature arrives via polling and refetch).
+  // Sync from parent only while the user hasn't edited the field.
   useEffect(() => {
-    setPayloadHex(rawTransactionBytes);
-  }, [rawTransactionBytes]);
+    if (!payloadDirty) setPayloadHex(rawTransactionBytes);
+  }, [rawTransactionBytes, payloadDirty]);
 
   useEffect(() => {
-    setSignaturesJson(initialSignaturesJson);
-  }, [initialSignaturesJson]);
+    if (!signaturesDirty) setSignaturesJson(initialSignaturesJson);
+  }, [initialSignaturesJson, signaturesDirty]);
 
   const handleCopy = useCallback(
     async (text: string, field: "payload" | "sigs") => {
@@ -239,7 +242,10 @@ export function OfflineSigningPanel({
           <Textarea
             id="payload-hex"
             value={payloadHex}
-            onChange={(e) => setPayloadHex(e.target.value)}
+            onChange={(e) => {
+              setPayloadHex(e.target.value);
+              setPayloadDirty(true);
+            }}
             rows={3}
             className="font-mono text-xs"
             spellCheck={false}
@@ -265,7 +271,10 @@ export function OfflineSigningPanel({
               type="button"
               size="sm"
               variant="ghost"
-              onClick={() => setPayloadHex(rawTransactionBytes)}
+              onClick={() => {
+                setPayloadHex(rawTransactionBytes);
+                setPayloadDirty(false);
+              }}
               disabled={payloadHex === rawTransactionBytes}
             >
               Reset
@@ -279,7 +288,10 @@ export function OfflineSigningPanel({
           <Textarea
             id="signatures-json"
             value={signaturesJson}
-            onChange={(e) => setSignaturesJson(e.target.value)}
+            onChange={(e) => {
+              setSignaturesJson(e.target.value);
+              setSignaturesDirty(true);
+            }}
             rows={8}
             className="font-mono text-xs"
             spellCheck={false}
@@ -306,7 +318,10 @@ export function OfflineSigningPanel({
               type="button"
               size="sm"
               variant="ghost"
-              onClick={() => setSignaturesJson(initialSignaturesJson)}
+              onClick={() => {
+                setSignaturesJson(initialSignaturesJson);
+                setSignaturesDirty(false);
+              }}
               disabled={signaturesJson === initialSignaturesJson}
             >
               Reset

@@ -4,6 +4,11 @@ import { useWallet as useAdapterWallet } from "@aptos-labs/wallet-adapter-react"
 import { useCallback, useEffect, useRef, useState } from "react";
 import { OfflineSigningPanel } from "@/components/offline-signing-panel";
 import { SignerStatusGrid } from "@/components/signer-status-grid";
+import {
+  SimulationResult,
+  type SimulationResultData,
+  SimulationStatusBadge,
+} from "@/components/simulation-result";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,12 +20,15 @@ import {
 } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { useWallet } from "@/components/wallet-provider";
+import {
+  extractEd25519SignatureHex,
+  findSignerIndex,
+} from "@/lib/aptos/signing";
 
 interface ProposalPayload {
   module: string;
   function: string;
-  typeArgs?: string[];
-  type_args?: string[];
+  typeArgs: string[];
   args: string[];
 }
 
@@ -64,17 +72,6 @@ interface ProposalData {
     label: string | null;
   };
   responses: SignerResponse[];
-}
-
-/** Client-safe signer index lookup (no SDK import) */
-function findSignerIndexClient(
-  publicKeyHexes: string[],
-  signerPublicKeyHex: string,
-): number {
-  const normalized = signerPublicKeyHex.toLowerCase().replace(/^0x/, "");
-  return publicKeyHexes.findIndex(
-    (pk) => pk.toLowerCase().replace(/^0x/, "") === normalized,
-  );
 }
 
 function getStatusBadge(status: string, expirationSecs: number) {
@@ -135,13 +132,9 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
   const [simulating, setSimulating] = useState(false);
-  const [simulation, setSimulation] = useState<{
-    success: boolean;
-    vmStatus: string;
-    gasUsed: string;
-    events: { type: string; data: unknown }[];
-    changes: { type: string; address?: string; resource?: string }[];
-  } | null>(null);
+  const [simulation, setSimulation] = useState<SimulationResultData | null>(
+    null,
+  );
   const [simError, setSimError] = useState<string | null>(null);
 
   const fetchProposal = useCallback(async () => {
@@ -202,7 +195,9 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
       pollTimers.current.forEach(clearTimeout);
       pollTimers.current = [];
     };
-  }, [proposal?.status, proposalId, fetchProposal, proposal]);
+    // Only `proposal?.status` gates the effect; depending on `proposal` too
+    // would restart polling on every unrelated refetch.
+  }, [proposal?.status, proposalId, fetchProposal]);
 
   if (loading) {
     return (
@@ -235,7 +230,7 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
     proposal.status === "expired" || proposal.expirationTimestampSecs < now;
   const isSigner =
     publicKey !== null &&
-    findSignerIndexClient(proposal.multisig.publicKeys, publicKey) >= 0;
+    findSignerIndex(proposal.multisig.publicKeys, publicKey) >= 0;
   const hasResponded =
     publicKey !== null &&
     proposal.responses.some(
@@ -282,29 +277,10 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
         transactionOrPayload: transaction as any,
       });
 
-      // Extract the raw Ed25519 signature (64 bytes) from the authenticator.
-      //
-      // The authenticator BCS format is:
-      //   AccountAuthenticatorSingleKey (variant 2):
-      //     [02] [AnyPublicKey: 00 + 20-byte Ed25519PK] [AnySignature: 00 + 40-byte Ed25519Sig]
-      //   AccountAuthenticatorEd25519 (variant 0):
-      //     [00] [32-byte Ed25519PK] [64-byte Ed25519Sig]
-      //
-      // We BCS-serialize the authenticator and parse the last 64 bytes as the
-      // raw Ed25519 signature, since it's always at the end.
-      const bcsBytes = authenticator.bcsToBytes();
-      // The last 64 bytes of the BCS are always the raw Ed25519 signature
-      const sigBytes = bcsBytes.slice(-64);
-      if (sigBytes.length !== 64) {
-        throw new Error(
-          `Expected 64-byte signature at end of authenticator BCS, got ${sigBytes.length}`,
-        );
-      }
-      const sigHex =
-        "0x" +
-        Array.from(sigBytes)
-          .map((b: number) => b.toString(16).padStart(2, "0"))
-          .join("");
+      // Extract the raw Ed25519 signature from the authenticator. The helper
+      // duck-types on the authenticator's variant (Ed25519 vs SingleKey) and
+      // rejects any other wallet type (multi-key, secp256k1, etc).
+      const sigHex = extractEd25519SignatureHex(authenticator);
 
       const res = await fetch(`/api/proposal/${proposalId}/sign`, {
         method: "POST",
@@ -398,8 +374,7 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
           payload: {
             module: proposal.payload.module,
             function: proposal.payload.function,
-            typeArgs:
-              proposal.payload.typeArgs ?? proposal.payload.type_args ?? [],
+            typeArgs: proposal.payload.typeArgs,
             args: proposal.payload.args,
           },
           maxGasAmount: proposal.maxGasAmount,
@@ -494,12 +469,10 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
               {payload.module}::{payload.function}
             </code>
           </div>
-          {(payload.typeArgs ?? payload.type_args ?? []).length > 0 && (
+          {payload.typeArgs.length > 0 && (
             <div>
               <span className="font-medium">Type Arguments: </span>
-              <code className="text-xs">
-                {(payload.typeArgs ?? payload.type_args ?? []).join(", ")}
-              </code>
+              <code className="text-xs">{payload.typeArgs.join(", ")}</code>
             </div>
           )}
           {payload.args.length > 0 && (
@@ -558,17 +531,7 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
           <div className="flex items-center justify-between">
             <CardTitle className="text-base">Simulation</CardTitle>
             <div className="flex items-center gap-2">
-              {simulation && (
-                <Badge
-                  className={
-                    simulation.success
-                      ? "bg-green-600 text-white"
-                      : "bg-red-600 text-white"
-                  }
-                >
-                  {simulation.success ? "Success" : "Failed"}
-                </Badge>
-              )}
+              {simulation && <SimulationStatusBadge simulation={simulation} />}
               <Button
                 variant="outline"
                 size="sm"
@@ -588,66 +551,7 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
           <CardContent className="space-y-3 text-sm">
             {simError && <p className="text-destructive text-xs">{simError}</p>}
             {simulation && (
-              <>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <span className="text-muted-foreground">Status: </span>
-                    <span
-                      className={
-                        simulation.success ? "text-green-600" : "text-red-600"
-                      }
-                    >
-                      {simulation.vmStatus}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Gas Used: </span>
-                    {simulation.gasUsed}
-                  </div>
-                </div>
-
-                {simulation.events.length > 0 && (
-                  <div className="space-y-2">
-                    <p className="font-medium">
-                      Events ({simulation.events.length})
-                    </p>
-                    <div className="max-h-48 overflow-y-auto rounded-md border bg-muted/50 p-2 space-y-2">
-                      {simulation.events.map((event, i) => (
-                        <div key={i} className="text-xs">
-                          <code className="text-primary font-medium">
-                            {event.type}
-                          </code>
-                          <pre className="mt-1 text-muted-foreground overflow-x-auto">
-                            {JSON.stringify(event.data, null, 2)}
-                          </pre>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {simulation.changes.length > 0 && (
-                  <div className="space-y-2">
-                    <p className="font-medium">
-                      State Changes ({simulation.changes.length})
-                    </p>
-                    <div className="max-h-36 overflow-y-auto rounded-md border bg-muted/50 p-2 space-y-1">
-                      {simulation.changes.map((change, i) => (
-                        <div key={i} className="text-xs">
-                          <Badge variant="outline" className="text-[10px] mr-1">
-                            {change.type}
-                          </Badge>
-                          {change.resource && (
-                            <code className="text-muted-foreground">
-                              {change.resource}
-                            </code>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </>
+              <SimulationResult simulation={simulation} textSize="text-sm" />
             )}
           </CardContent>
         )}

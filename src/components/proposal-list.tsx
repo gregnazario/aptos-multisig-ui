@@ -27,7 +27,7 @@ interface Proposal {
   payload: {
     module: string;
     function: string;
-    type_args: string[];
+    typeArgs: string[];
     args: unknown[];
   };
   rawTransactionBytes: string;

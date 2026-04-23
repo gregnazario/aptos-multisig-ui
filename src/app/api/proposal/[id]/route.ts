@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
+import { normalizeProposalPayload } from "@/lib/aptos/payload";
 import { db } from "@/lib/db";
 import { multisigs, proposals, signerResponses } from "@/lib/db/schema";
 
@@ -34,7 +35,7 @@ export async function GET(
 
   return NextResponse.json({
     ...proposal,
-    payload: JSON.parse(proposal.payload),
+    payload: normalizeProposalPayload(JSON.parse(proposal.payload)),
     multisig: {
       ...multisig,
       publicKeys: JSON.parse(multisig.publicKeys),

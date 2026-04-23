@@ -3,6 +3,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { v4 as uuid } from "uuid";
 import type { AptosNetwork } from "@/lib/aptos/client";
 import { findSignerIndex } from "@/lib/aptos/multisig";
+import { normalizeProposalPayload } from "@/lib/aptos/payload";
 import { buildTransaction } from "@/lib/aptos/transaction";
 import { verifySessionToken } from "@/lib/auth/session";
 import { db } from "@/lib/db";
@@ -47,7 +48,7 @@ export async function GET(
 
       return {
         ...proposal,
-        payload: JSON.parse(proposal.payload),
+        payload: normalizeProposalPayload(JSON.parse(proposal.payload)),
         responses,
         signedCount,
         declinedCount,

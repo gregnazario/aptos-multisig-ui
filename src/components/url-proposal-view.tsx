@@ -16,7 +16,12 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useWallet } from "@/components/wallet-provider";
+import type { AptosNetwork } from "@/lib/aptos/client";
 import { deriveMultisigAddress } from "@/lib/aptos/multisig";
+import {
+  extractEd25519SignatureHex,
+  findSignerIndex,
+} from "@/lib/aptos/signing";
 import {
   addSignatureToUrl,
   decodeProposalUrl,
@@ -24,16 +29,6 @@ import {
   hasThreshold,
   type UrlProposalData,
 } from "@/lib/url-state";
-
-function findSignerIndexClient(
-  publicKeyHexes: string[],
-  signerPublicKeyHex: string,
-): number {
-  const normalized = signerPublicKeyHex.toLowerCase().replace(/^0x/, "");
-  return publicKeyHexes.findIndex(
-    (pk) => pk.toLowerCase().replace(/^0x/, "") === normalized,
-  );
-}
 
 export function UrlProposalView() {
   const { connected, publicKey, network: walletNetwork } = useWallet();
@@ -79,7 +74,7 @@ export function UrlProposalView() {
   const thresholdMet = data ? hasThreshold(data) : false;
 
   const signerIndex =
-    data && publicKey ? findSignerIndexClient(data.pks, publicKey) : -1;
+    data && publicKey ? findSignerIndex(data.pks, publicKey) : -1;
   const isSigner = signerIndex >= 0;
   const alreadySigned = data ? hasSignerSigned(data, signerIndex) : false;
   const networkMatches = data
@@ -116,17 +111,7 @@ export function UrlProposalView() {
         transactionOrPayload: transaction as any,
       });
 
-      // Extract raw 64-byte Ed25519 signature from BCS
-      const bcsBytes = authenticator.bcsToBytes();
-      const sigBytes = bcsBytes.slice(-64);
-      if (sigBytes.length !== 64) {
-        throw new Error(`Expected 64-byte signature, got ${sigBytes.length}`);
-      }
-      const sigHex =
-        "0x" +
-        Array.from(sigBytes)
-          .map((b: number) => b.toString(16).padStart(2, "0"))
-          .join("");
+      const sigHex = extractEd25519SignatureHex(authenticator);
 
       // Generate new URL with signature added
       const newUrl = addSignatureToUrl(data, signerIndex, sigHex);
@@ -200,13 +185,18 @@ export function UrlProposalView() {
         multiSig,
       );
 
-      const networkMap: any = {
+      // Network is imported as a value (enum-like), so we can't type the map
+      // as `Record<AptosNetwork, Network>` directly. Inferred shape is fine.
+      const networkMap = {
         mainnet: Network.MAINNET,
         testnet: Network.TESTNET,
         devnet: Network.DEVNET,
-      };
+      } as const satisfies Record<
+        AptosNetwork,
+        (typeof Network)[keyof typeof Network]
+      >;
       const config = new AptosConfig({
-        network: networkMap[data.net] ?? Network.DEVNET,
+        network: networkMap[data.net as AptosNetwork] ?? Network.DEVNET,
       });
       const aptos = new Aptos(config);
 
