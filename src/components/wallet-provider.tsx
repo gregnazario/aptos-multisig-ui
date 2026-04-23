@@ -103,15 +103,12 @@ function MultisigWalletInner({
     [adapter, connectedVia],
   );
 
-  const setOKXConnection = useCallback(
-    (addr: string, pk: string) => {
-      setOkxAddress(addr);
-      setOkxPublicKey(pk);
-      setSessionToken(null);
-      tokenRef.current = null;
-    },
-    [],
-  );
+  const setOKXConnection = useCallback((addr: string, pk: string) => {
+    setOkxAddress(addr);
+    setOkxPublicKey(pk);
+    setSessionToken(null);
+    tokenRef.current = null;
+  }, []);
 
   const clearOKXConnection = useCallback(() => {
     setOkxAddress(null);
@@ -139,10 +136,7 @@ function MultisigWalletInner({
       fullMessage = signResult.fullMessage;
     } else {
       // OKX Connect
-      const result = await signMessageOKX(
-        "Aptos Multisig Verification",
-        nonce,
-      );
+      const result = await signMessageOKX("Aptos Multisig Verification", nonce);
       signature = result.signature;
       fullMessage = result.fullMessage;
     }
@@ -193,7 +187,7 @@ function MultisigWalletInner({
 }
 
 export function WalletProvider({ children }: { children: React.ReactNode }) {
-  const [network] = useState<AptosNetwork>("devnet");
+  const [network] = useState<AptosNetwork>("mainnet");
 
   return (
     <AptosWalletAdapterProvider
