@@ -32,6 +32,9 @@ export const proposals = sqliteTable("proposals", {
   txHash: text("tx_hash"),
   failureReason: text("failure_reason"),
   createdBy: text("created_by").notNull(), // public key hex of proposer
+  creatorPublicKey: text("creator_public_key"), // Ed25519 public key hex (0x-prefixed)
+  creatorSignature: text("creator_signature"), // Ed25519 signature hex over the wallet-wrapped fullMessage
+  creatorFullMessage: text("creator_full_message"), // The wallet-wrapped message that was actually signed (contains the canonical proof string)
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .$defaultFn(() => new Date()),

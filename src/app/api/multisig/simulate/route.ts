@@ -1,11 +1,124 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { type AptosNetwork, getAptosClient } from "@/lib/aptos/client";
 
+interface BalanceChange {
+  /** Owner address — either derived from a CoinDeposit/Withdraw event, or from a FungibleStore's `owner` field */
+  address: string;
+  /** Asset identifier: coin type (e.g. `0x1::aptos_coin::AptosCoin`) or FA metadata object address */
+  asset: string;
+  /** Net delta as a signed decimal string; negative = decrease */
+  amount: string;
+  /** `coin` for legacy Coin<T>, `fa` for fungible asset */
+  kind: "coin" | "fa";
+}
+
+type SimEvent = { type: string; data: unknown };
+type SimChange = {
+  type: string;
+  address?: string;
+  data?: { type: string; data: unknown };
+};
+
+const normalize = (addr: string) =>
+  addr.toLowerCase().replace(/^0x/, "").padStart(64, "0");
+
+function extractBalanceChanges(
+  events: SimEvent[],
+  changes: SimChange[],
+): BalanceChange[] {
+  // Map normalized FA store address -> { owner, metadata }
+  const storeInfo = new Map<string, { owner: string; metadata: string }>();
+  for (const c of changes) {
+    if (
+      c.type === "write_resource" &&
+      c.data?.type === "0x1::fungible_asset::FungibleStore" &&
+      c.address
+    ) {
+      const d = c.data.data as {
+        owner?: string;
+        metadata?: { inner?: string } | string;
+      };
+      const owner = d.owner;
+      const metadata =
+        typeof d.metadata === "string" ? d.metadata : d.metadata?.inner;
+      if (owner && metadata) {
+        storeInfo.set(normalize(c.address), { owner, metadata });
+      }
+    }
+  }
+
+  // Accumulate deltas keyed by `${address}|${asset}`
+  const deltas = new Map<
+    string,
+    { address: string; asset: string; amount: bigint; kind: "coin" | "fa" }
+  >();
+  const bump = (
+    address: string,
+    asset: string,
+    delta: bigint,
+    kind: "coin" | "fa",
+  ) => {
+    const key = `${normalize(address)}|${asset.toLowerCase()}`;
+    const cur = deltas.get(key);
+    if (cur) cur.amount += delta;
+    else deltas.set(key, { address, asset, amount: delta, kind });
+  };
+
+  for (const e of events) {
+    const d = e.data as Record<string, unknown> | undefined;
+    if (!d) continue;
+
+    // Modern Coin events: 0x1::coin::CoinDeposit / CoinWithdraw
+    if (e.type === "0x1::coin::CoinDeposit" && d.account && d.coin_type) {
+      bump(
+        String(d.account),
+        String(d.coin_type),
+        BigInt(String(d.amount ?? 0)),
+        "coin",
+      );
+      continue;
+    }
+    if (e.type === "0x1::coin::CoinWithdraw" && d.account && d.coin_type) {
+      bump(
+        String(d.account),
+        String(d.coin_type),
+        -BigInt(String(d.amount ?? 0)),
+        "coin",
+      );
+      continue;
+    }
+
+    // FA events: 0x1::fungible_asset::Deposit / Withdraw
+    if (e.type === "0x1::fungible_asset::Deposit" && d.store) {
+      const info = storeInfo.get(normalize(String(d.store)));
+      if (info) {
+        bump(info.owner, info.metadata, BigInt(String(d.amount ?? 0)), "fa");
+      }
+      continue;
+    }
+    if (e.type === "0x1::fungible_asset::Withdraw" && d.store) {
+      const info = storeInfo.get(normalize(String(d.store)));
+      if (info) {
+        bump(info.owner, info.metadata, -BigInt(String(d.amount ?? 0)), "fa");
+      }
+    }
+  }
+
+  return Array.from(deltas.values())
+    .filter((d) => d.amount !== 0n)
+    .map((d) => ({
+      address: d.address,
+      asset: d.asset,
+      amount: d.amount.toString(),
+      kind: d.kind,
+    }));
+}
+
 /**
  * POST /api/multisig/simulate
  *
  * Simulates a transaction for a multisig account and returns
- * the expected changes (gas used, events, state changes).
+ * the expected changes (gas used, events, state changes, balance deltas).
  */
 export async function POST(request: NextRequest) {
   const body = await request.json();
@@ -49,21 +162,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const rawEvents: SimEvent[] =
+      (txResult as any).events?.map((e: any) => ({
+        type: e.type,
+        data: e.data,
+      })) ?? [];
+    const rawChanges: SimChange[] =
+      (txResult as any).changes?.map((c: any) => ({
+        type: c.type,
+        address: c.address,
+        data: c.data,
+      })) ?? [];
+
     return NextResponse.json({
       success: txResult.success,
       vmStatus: txResult.vm_status,
       gasUsed: txResult.gas_used,
-      events:
-        (txResult as any).events?.map((e: any) => ({
-          type: e.type,
-          data: e.data,
-        })) ?? [],
-      changes:
-        (txResult as any).changes?.map((c: any) => ({
-          type: c.type,
-          address: c.address,
-          resource: c.data?.type,
-        })) ?? [],
+      events: rawEvents,
+      changes: rawChanges.map((c) => ({
+        type: c.type,
+        address: c.address,
+        resource: c.data?.type,
+      })),
+      balanceChanges: extractBalanceChanges(rawEvents, rawChanges),
     });
   } catch (err) {
     return NextResponse.json(

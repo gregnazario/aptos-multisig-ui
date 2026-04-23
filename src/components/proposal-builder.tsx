@@ -1,5 +1,6 @@
 "use client";
 
+import { useWallet as useAdapterWallet } from "@aptos-labs/wallet-adapter-react";
 import { useCallback, useState } from "react";
 import { AbiFunctionForm } from "@/components/abi-function-form";
 import {
@@ -22,6 +23,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useWallet } from "@/components/wallet-provider";
 import type { AptosNetwork } from "@/lib/aptos/client";
+import { buildProposalProofCanonicalString } from "@/lib/auth/proposal-proof";
 import { encodeProposalUrl, type UrlProposalData } from "@/lib/url-state";
 
 type StorageMode = "url" | "server";
@@ -39,7 +41,8 @@ export function ProposalBuilder({
   threshold,
   publicKeys,
 }: ProposalBuilderProps) {
-  const { connected, verifyIdentity } = useWallet();
+  const { connected } = useWallet();
+  const adapter = useAdapterWallet();
 
   const [mode, setMode] = useState<StorageMode>("server");
   const [description, setDescription] = useState("");
@@ -181,16 +184,32 @@ export function ProposalBuilder({
         const urlPath = encodeProposalUrl(urlData);
         setSuccessUrl(`${window.location.origin}${urlPath}`);
       } else {
-        const token = await verifyIdentity();
+        // Build the canonical proof string from the just-built raw tx bytes
+        // and ask the wallet to sign it. The wallet wraps our message in its
+        // own envelope; we send both the signature and the full wrapped
+        // message so the server can verify and confirm authorship.
+        const hex = built.rawTransactionBytes.replace(/^0x/, "");
+        const rawTxBytes = Uint8Array.from(
+          (hex.match(/.{1,2}/g) ?? []).map((b: string) => parseInt(b, 16)),
+        );
+        const canonical = await buildProposalProofCanonicalString(rawTxBytes);
+        const nonce = crypto.randomUUID();
+        const signResult = await adapter.signMessage({
+          message: canonical,
+          nonce,
+        });
+        const creatorPublicKey = adapter.account?.publicKey?.toString();
+        if (!creatorPublicKey) {
+          throw new Error("Connected wallet has no public key.");
+        }
+        const creatorSignature = signResult.signature.toString();
+        const creatorFullMessage = signResult.fullMessage;
 
         const res = await fetch(
           `/api/multisig/${encodeURIComponent(multisigAddress)}/proposals`,
           {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               network,
               description: description.trim(),
@@ -200,6 +219,9 @@ export function ProposalBuilder({
               expirationSeconds: expirationHours * 3600,
               feePayerAddress: feePayerAddress.trim() || undefined,
               source: "manual",
+              creatorPublicKey,
+              creatorSignature,
+              creatorFullMessage,
             }),
           },
         );

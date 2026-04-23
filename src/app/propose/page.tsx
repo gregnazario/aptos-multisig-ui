@@ -234,7 +234,7 @@ function ProposeContent() {
 
   if (successUrl) {
     return (
-      <div className="max-w-2xl mx-auto py-8 px-4 space-y-6">
+      <div className="w-full py-8 px-4 space-y-6">
         <Card>
           <CardHeader>
             <CardTitle>Proposal Created</CardTitle>
@@ -282,7 +282,7 @@ function ProposeContent() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto py-8 px-4 space-y-6">
+    <div className="w-full py-8 px-4 space-y-6">
       <div className="space-y-2">
         <h1 className="text-2xl font-bold tracking-tight">
           Propose Transaction

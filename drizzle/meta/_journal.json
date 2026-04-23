@@ -22,6 +22,20 @@
       "when": 1776213638383,
       "tag": "0002_dear_retro_girl",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1776974957173,
+      "tag": "0003_opposite_toxin",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1776975497416,
+      "tag": "0004_light_vulcan",
+      "breakpoints": true
     }
   ]
 }

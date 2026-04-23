@@ -1,3 +1,4 @@
+import { Ed25519PublicKey, Ed25519Signature } from "@aptos-labs/ts-sdk";
 import { and, desc, eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { v4 as uuid } from "uuid";
@@ -5,7 +6,8 @@ import type { AptosNetwork } from "@/lib/aptos/client";
 import { findSignerIndex } from "@/lib/aptos/multisig";
 import { normalizeProposalPayload } from "@/lib/aptos/payload";
 import { buildTransaction } from "@/lib/aptos/transaction";
-import { verifySessionToken } from "@/lib/auth/session";
+import { isAdmin } from "@/lib/auth/admin";
+import { buildProposalProofCanonicalString } from "@/lib/auth/proposal-proof";
 import { db } from "@/lib/db";
 import { multisigs, proposals, signerResponses } from "@/lib/db/schema";
 
@@ -65,25 +67,6 @@ export async function POST(
 ) {
   const { address } = await params;
 
-  // Verify JWT session
-  const authHeader = request.headers.get("authorization");
-  if (!authHeader?.startsWith("Bearer ")) {
-    return NextResponse.json(
-      { error: "Missing or invalid Authorization header" },
-      { status: 401 },
-    );
-  }
-
-  let session;
-  try {
-    session = await verifySessionToken(authHeader.slice(7));
-  } catch {
-    return NextResponse.json(
-      { error: "Invalid session token" },
-      { status: 401 },
-    );
-  }
-
   const body = await request.json();
   const {
     network,
@@ -96,11 +79,21 @@ export async function POST(
     source,
     sourceDappUrl,
     signature,
+    creatorPublicKey,
+    creatorSignature,
+    creatorFullMessage,
   } = body;
 
   if (!network || !description || !payload) {
     return NextResponse.json(
       { error: "Missing required fields: network, description, payload" },
+      { status: 400 },
+    );
+  }
+
+  if (!creatorPublicKey || !creatorSignature || !creatorFullMessage) {
+    return NextResponse.json(
+      { error: "Creator proof required" },
       { status: 400 },
     );
   }
@@ -114,17 +107,7 @@ export async function POST(
     return NextResponse.json({ error: "Multisig not found" }, { status: 404 });
   }
 
-  // Verify session's publicKey is in the multisig's signer list
-  const publicKeys: string[] = JSON.parse(multisig.publicKeys);
-  const signerIndex = findSignerIndex(publicKeys, session.publicKey);
-  if (signerIndex === -1) {
-    return NextResponse.json(
-      { error: "You are not a signer of this multisig" },
-      { status: 403 },
-    );
-  }
-
-  // Build the transaction
+  // Build the transaction first — the creator proof is over these exact bytes.
   let built;
   try {
     built = await buildTransaction({
@@ -140,6 +123,51 @@ export async function POST(
     const message =
       err instanceof Error ? err.message : "Transaction build failed";
     return NextResponse.json({ error: message }, { status: 400 });
+  }
+
+  // Verify the Ed25519 signature over the wallet-wrapped fullMessage, then
+  // confirm that fullMessage embeds our canonical proof string derived from
+  // the just-built rawTransactionBytes (binds the proof to this exact tx).
+  let proofValid = false;
+  let canonicalEmbedded = false;
+  try {
+    const rawTx = Uint8Array.from(
+      (built.rawTransactionBytes.replace(/^0x/, "").match(/.{1,2}/g) ?? []).map(
+        (b: string) => parseInt(b, 16),
+      ),
+    );
+    const canonical = await buildProposalProofCanonicalString(rawTx);
+    const messageBytes = new TextEncoder().encode(creatorFullMessage);
+    const pubKey = new Ed25519PublicKey(creatorPublicKey);
+    const sig = new Ed25519Signature(creatorSignature);
+    proofValid = pubKey.verifySignature({
+      message: messageBytes,
+      signature: sig,
+    });
+    canonicalEmbedded = creatorFullMessage.includes(canonical);
+  } catch {
+    return NextResponse.json(
+      { error: "Invalid proof encoding" },
+      { status: 400 },
+    );
+  }
+  if (!proofValid || !canonicalEmbedded) {
+    return NextResponse.json(
+      { error: "Creator proof did not verify" },
+      { status: 403 },
+    );
+  }
+
+  // Authorize: creator must be a multisig signer or in the admin allowlist.
+  const publicKeys: string[] = JSON.parse(multisig.publicKeys);
+  const signerIndex = findSignerIndex(publicKeys, creatorPublicKey);
+  const creatorIsSigner = signerIndex !== -1;
+  const creatorIsAdmin = !creatorIsSigner && isAdmin(creatorPublicKey);
+  if (!creatorIsSigner && !creatorIsAdmin) {
+    return NextResponse.json(
+      { error: "Creator not authorized for this multisig" },
+      { status: 403 },
+    );
   }
 
   // Create proposal record
@@ -158,16 +186,20 @@ export async function POST(
     expirationTimestampSecs: built.expirationTimestampSecs,
     feePayerAddress: feePayerAddress ?? null,
     status: "pending",
-    createdBy: session.publicKey,
+    createdBy: creatorPublicKey,
+    creatorPublicKey,
+    creatorSignature,
+    creatorFullMessage,
   });
 
-  // If signature is provided, store the proposer's signature
-  if (signature) {
+  // If an additional signer-vote signature is included and the creator IS a
+  // signer, store it as their first approval.
+  if (signature && creatorIsSigner) {
     await db.insert(signerResponses).values({
       id: uuid(),
       proposalId: id,
       signerIndex,
-      publicKey: session.publicKey,
+      publicKey: creatorPublicKey,
       response: "signed",
       signature,
     });

@@ -1,0 +1,1 @@
+ALTER TABLE `proposals` ADD `creator_full_message` text;

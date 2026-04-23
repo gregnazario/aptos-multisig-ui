@@ -61,6 +61,11 @@ interface ProposalData {
   txHash: string | null;
   failureReason: string | null;
   createdBy: string;
+  creatorPublicKey: string | null;
+  creatorSignature: string | null;
+  creatorFullMessage: string | null;
+  creatorAddress: string | null;
+  creatorRole: "signer" | "admin" | "unverified";
   createdAt: string;
   updatedAt: string;
   multisig: {
@@ -107,6 +112,27 @@ function getSourceBadge(source: string) {
   );
 }
 
+function getCreatorRoleBadge(role: ProposalData["creatorRole"]) {
+  switch (role) {
+    case "signer":
+      return <Badge variant="outline">Signer</Badge>;
+    case "admin":
+      return (
+        <Badge className="bg-amber-500 text-white hover:bg-amber-500">
+          Admin
+        </Badge>
+      );
+    default:
+      return <Badge variant="secondary">Unverified</Badge>;
+  }
+}
+
+function shortHex(a: string) {
+  const clean = a.replace(/^0x/, "");
+  if (clean.length <= 16) return `0x${clean}`;
+  return `0x${clean.slice(0, 8)}…${clean.slice(-6)}`;
+}
+
 interface ProposalViewProps {
   proposalId: string;
 }
@@ -136,6 +162,10 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
     null,
   );
   const [simError, setSimError] = useState<string | null>(null);
+  const [proofVerification, setProofVerification] = useState<
+    "idle" | "valid" | "invalid"
+  >("idle");
+  const [verifyingProof, setVerifyingProof] = useState(false);
 
   const fetchProposal = useCallback(async () => {
     try {
@@ -418,6 +448,45 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
     }
   }
 
+  async function handleVerifyProof() {
+    if (
+      !proposal?.creatorPublicKey ||
+      !proposal.creatorSignature ||
+      !proposal.creatorFullMessage
+    ) {
+      return;
+    }
+    setVerifyingProof(true);
+    try {
+      const { Ed25519PublicKey, Ed25519Signature } = await import(
+        "@aptos-labs/ts-sdk"
+      );
+      const { buildProposalProofCanonicalString } = await import(
+        "@/lib/auth/proposal-proof"
+      );
+      const hex = proposal.rawTransactionBytes.replace(/^0x/, "");
+      const rawTxBytes = Uint8Array.from(
+        (hex.match(/.{1,2}/g) ?? []).map((b: string) => parseInt(b, 16)),
+      );
+      const canonical = await buildProposalProofCanonicalString(rawTxBytes);
+      const pubKey = new Ed25519PublicKey(proposal.creatorPublicKey);
+      const sig = new Ed25519Signature(proposal.creatorSignature);
+      const messageBytes = new TextEncoder().encode(
+        proposal.creatorFullMessage,
+      );
+      const sigOk = pubKey.verifySignature({
+        message: messageBytes,
+        signature: sig,
+      });
+      const embedded = proposal.creatorFullMessage.includes(canonical);
+      setProofVerification(sigOk && embedded ? "valid" : "invalid");
+    } catch {
+      setProofVerification("invalid");
+    } finally {
+      setVerifyingProof(false);
+    }
+  }
+
   const signedCount = proposal.responses.filter(
     (r) => r.response === "signed",
   ).length;
@@ -428,7 +497,7 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
   ).toLocaleString();
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6 p-4">
+    <div className="w-full space-y-6 p-4">
       {/* Header card */}
       <Card>
         <CardHeader>
@@ -444,6 +513,68 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
           </div>
           <CardDescription>{proposal.description}</CardDescription>
         </CardHeader>
+      </Card>
+
+      {/* Proposed by */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base">Proposed By</CardTitle>
+            {getCreatorRoleBadge(proposal.creatorRole)}
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3 text-sm">
+          {proposal.creatorAddress ? (
+            <div>
+              <a
+                href={`https://explorer.aptoslabs.com/account/${proposal.creatorAddress}?network=${proposal.multisig.network}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs font-mono text-blue-600 hover:underline break-all"
+                title={
+                  proposal.creatorPublicKey
+                    ? `Public key: ${proposal.creatorPublicKey}`
+                    : undefined
+                }
+              >
+                {proposal.creatorAddress}
+              </a>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Legacy proposal — no creator proof on record.
+            </p>
+          )}
+
+          {proposal.creatorPublicKey && proposal.creatorSignature && (
+            <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleVerifyProof}
+                disabled={verifyingProof}
+              >
+                {verifyingProof ? "Verifying..." : "Verify proof"}
+              </Button>
+              {proofVerification === "valid" && (
+                <span className="text-green-600 text-xs">✓ Proof is valid</span>
+              )}
+              {proofVerification === "invalid" && (
+                <span className="text-red-600 text-xs">
+                  ✗ Proof did not verify
+                </span>
+              )}
+              {proposal.creatorPublicKey && (
+                <code
+                  className="text-[10px] text-muted-foreground"
+                  title={proposal.creatorPublicKey}
+                >
+                  pk {shortHex(proposal.creatorPublicKey)}
+                </code>
+              )}
+            </div>
+          )}
+        </CardContent>
       </Card>
 
       {/* Transaction details */}
