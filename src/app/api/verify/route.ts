@@ -12,7 +12,10 @@ export async function POST(request: NextRequest) {
   const pkHex = (publicKey ?? "").replace(/^0x/, "");
   if (pkHex.length !== 64 || !/^[0-9a-fA-F]+$/.test(pkHex)) {
     return NextResponse.json(
-      { error: "Only Ed25519 wallets are supported. Keyless wallets (Aptos Connect, Google login) are not compatible." },
+      {
+        error:
+          "Only Ed25519 wallets are supported. Keyless wallets (Aptos Connect, Google login) are not compatible.",
+      },
       { status: 400 },
     );
   }

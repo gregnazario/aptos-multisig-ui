@@ -67,17 +67,20 @@ export function DappProxy({
     setSheetOpen(false);
   }
 
-  function sendResponse(id: number, result: unknown, error?: string) {
-    iframeRef.current?.contentWindow?.postMessage(
-      {
-        type: "MULTISIG_WALLET_RESPONSE",
-        id,
-        result: error ? undefined : result,
-        error,
-      },
-      "*",
-    );
-  }
+  const sendResponse = useCallback(
+    (id: number, result: unknown, error?: string) => {
+      iframeRef.current?.contentWindow?.postMessage(
+        {
+          type: "MULTISIG_WALLET_RESPONSE",
+          id,
+          result: error ? undefined : result,
+          error,
+        },
+        "*",
+      );
+    },
+    [],
+  );
 
   const handleMessage = useCallback(
     (event: MessageEvent) => {

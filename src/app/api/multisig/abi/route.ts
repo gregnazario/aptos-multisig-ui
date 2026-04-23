@@ -47,9 +47,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Find the specific function
-    const allFunctions = [
-      ...(moduleData.abi.exposed_functions ?? []),
-    ];
+    const allFunctions = [...(moduleData.abi.exposed_functions ?? [])];
 
     const fn = allFunctions.find((f: any) => f.name === functionName);
 

@@ -47,8 +47,7 @@ function typeLabel(moveType: string): { label: string; placeholder: string } {
   if (t === "u128") return { label: "u128", placeholder: "Number" };
   if (t === "u256") return { label: "u256", placeholder: "Number" };
   if (t === "string") return { label: "String", placeholder: "Text" };
-  if (t === "vector<u8>")
-    return { label: "Bytes (hex)", placeholder: "0x..." };
+  if (t === "vector<u8>") return { label: "Bytes (hex)", placeholder: "0x..." };
   if (t.startsWith("vector<"))
     return {
       label: `Vector<${t.slice(7, -1)}>`,
@@ -292,9 +291,7 @@ export function AbiFunctionForm({
           <Label className="text-sm font-medium">Type Arguments</Label>
           {Array.from({ length: abi.genericTypeParams }, (_, i) => (
             <div key={`type-${i}`} className="space-y-1">
-              <Label className="text-xs text-muted-foreground">
-                T{i}
-              </Label>
+              <Label className="text-xs text-muted-foreground">T{i}</Label>
               <Input
                 placeholder="0x1::aptos_coin::AptosCoin"
                 value={typeArgs[i] ?? ""}

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { verifySessionToken } from "@/lib/auth/session";
 import { findSignerIndex } from "@/lib/aptos/multisig";
+import { verifySessionToken } from "@/lib/auth/session";
 
 /**
  * Verify the request has a valid JWT and the caller is a signer
@@ -10,14 +10,20 @@ export async function verifySigner(
   authHeader: string | null,
   publicKeys: string[],
 ): Promise<
-  | { ok: true; session: { publicKey: string; address: string; network: string } }
+  | {
+      ok: true;
+      session: { publicKey: string; address: string; network: string };
+    }
   | { ok: false; response: NextResponse }
 > {
   if (!authHeader?.startsWith("Bearer ")) {
     return {
       ok: false,
       response: NextResponse.json(
-        { error: "Authentication required. Connect your wallet to view this multisig." },
+        {
+          error:
+            "Authentication required. Connect your wallet to view this multisig.",
+        },
         { status: 401 },
       ),
     };

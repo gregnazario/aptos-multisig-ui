@@ -308,7 +308,11 @@ export async function GET(
     );
   }
 
-  const targetUrl = buildTargetUrl(path ?? [], origin, request.nextUrl.searchParams);
+  const targetUrl = buildTargetUrl(
+    path ?? [],
+    origin,
+    request.nextUrl.searchParams,
+  );
   const isInitialPage = !path || path.length === 0 || path[0] === "";
 
   try {
@@ -336,7 +340,11 @@ export async function POST(
     );
   }
 
-  const targetUrl = buildTargetUrl(path ?? [], origin, request.nextUrl.searchParams);
+  const targetUrl = buildTargetUrl(
+    path ?? [],
+    origin,
+    request.nextUrl.searchParams,
+  );
 
   try {
     const body = await request.arrayBuffer();

@@ -35,7 +35,10 @@ export function encodeProposalUrl(
   const json = JSON.stringify(data);
   const base64 = btoa(unescape(encodeURIComponent(json)));
   // Make URL-safe: replace + with -, / with _, remove trailing =
-  const urlSafe = base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  const urlSafe = base64
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
   return `${basePath}#${urlSafe}`;
 }
 
@@ -44,10 +47,7 @@ export function encodeProposalUrl(
  */
 export function decodeProposalUrl(hash: string): UrlProposalData | null {
   try {
-    const base64 = hash
-      .replace(/^#/, "")
-      .replace(/-/g, "+")
-      .replace(/_/g, "/");
+    const base64 = hash.replace(/^#/, "").replace(/-/g, "+").replace(/_/g, "/");
     // Add back padding
     const padded = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
     const json = decodeURIComponent(escape(atob(padded)));

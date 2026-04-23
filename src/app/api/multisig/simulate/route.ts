@@ -28,7 +28,8 @@ export async function POST(request: NextRequest) {
       transaction: await aptos.transaction.build.simple({
         sender: multisigAddress,
         data: {
-          function: `${payload.module}::${payload.function}` as `${string}::${string}::${string}`,
+          function:
+            `${payload.module}::${payload.function}` as `${string}::${string}::${string}`,
           typeArguments: payload.typeArgs ?? [],
           functionArguments: payload.args ?? [],
         },
@@ -42,22 +43,27 @@ export async function POST(request: NextRequest) {
     // Extract useful information from simulation result
     const txResult = result[0];
     if (!txResult) {
-      return NextResponse.json({ error: "Empty simulation result" }, { status: 500 });
+      return NextResponse.json(
+        { error: "Empty simulation result" },
+        { status: 500 },
+      );
     }
 
     return NextResponse.json({
       success: txResult.success,
       vmStatus: txResult.vm_status,
       gasUsed: txResult.gas_used,
-      events: (txResult as any).events?.map((e: any) => ({
-        type: e.type,
-        data: e.data,
-      })) ?? [],
-      changes: (txResult as any).changes?.map((c: any) => ({
-        type: c.type,
-        address: c.address,
-        resource: c.data?.type,
-      })) ?? [],
+      events:
+        (txResult as any).events?.map((e: any) => ({
+          type: e.type,
+          data: e.data,
+        })) ?? [],
+      changes:
+        (txResult as any).changes?.map((c: any) => ({
+          type: c.type,
+          address: c.address,
+          resource: c.data?.type,
+        })) ?? [],
     });
   } catch (err) {
     return NextResponse.json(
