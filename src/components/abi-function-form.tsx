@@ -162,6 +162,8 @@ export function AbiFunctionForm({
   const [error, setError] = useState<string | null>(null);
   const [typeArgs, setTypeArgs] = useState<string[]>(initialTypeArgs ?? []);
   const [args, setArgs] = useState<string[]>(initialArgs ?? []);
+  // Incremented by the Retry button to force the debounced effect to re-run.
+  const [retryToken, setRetryToken] = useState(0);
 
   // Fetch ABI when function changes. Debounced so we don't spam the API
   // on every keystroke, and race-protected so an in-flight older request
@@ -229,7 +231,9 @@ export function AbiFunctionForm({
       clearTimeout(timeout);
       controller.abort();
     };
-  }, [fetchAbi]);
+    // retryToken is included so the Retry button can force a re-run while
+    // still going through the same debounce + abort machinery.
+  }, [fetchAbi, retryToken]);
 
   // Notify parent when values change
   useEffect(() => {
@@ -266,7 +270,7 @@ export function AbiFunctionForm({
           <Button
             variant="outline"
             size="sm"
-            onClick={() => fetchAbi(new AbortController().signal)}
+            onClick={() => setRetryToken((t) => t + 1)}
           >
             Retry
           </Button>

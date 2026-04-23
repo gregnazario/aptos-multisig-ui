@@ -2,6 +2,11 @@
 
 import { useCallback, useState } from "react";
 import { AbiFunctionForm } from "@/components/abi-function-form";
+import {
+  SimulationResult,
+  type SimulationResultData,
+  SimulationStatusBadge,
+} from "@/components/simulation-result";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -28,14 +33,6 @@ interface ProposalBuilderProps {
   publicKeys: string[];
 }
 
-interface SimulationResult {
-  success: boolean;
-  vmStatus: string;
-  gasUsed: string;
-  events: { type: string; data: unknown }[];
-  changes: { type: string; address?: string; resource?: string }[];
-}
-
 export function ProposalBuilder({
   multisigAddress,
   network,
@@ -60,7 +57,9 @@ export function ProposalBuilder({
 
   // Simulation
   const [simulating, setSimulating] = useState(false);
-  const [simulation, setSimulation] = useState<SimulationResult | null>(null);
+  const [simulation, setSimulation] = useState<SimulationResultData | null>(
+    null,
+  );
   const [simError, setSimError] = useState<string | null>(null);
 
   const [loading, setLoading] = useState(false);
@@ -480,17 +479,7 @@ export function ProposalBuilder({
             <div className="flex items-center justify-between">
               <CardTitle className="text-base">Simulation</CardTitle>
               {simulating && <Badge variant="secondary">Simulating...</Badge>}
-              {simulation && (
-                <Badge
-                  className={
-                    simulation.success
-                      ? "bg-green-600 text-white"
-                      : "bg-red-600 text-white"
-                  }
-                >
-                  {simulation.success ? "Success" : "Failed"}
-                </Badge>
-              )}
+              {simulation && <SimulationStatusBadge simulation={simulation} />}
             </div>
             <CardDescription>
               Preview of what this transaction would do.
@@ -506,66 +495,7 @@ export function ProposalBuilder({
             )}
 
             {simulation && (
-              <>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="text-muted-foreground">Status: </span>
-                    <span
-                      className={
-                        simulation.success ? "text-green-600" : "text-red-600"
-                      }
-                    >
-                      {simulation.vmStatus}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Gas Used: </span>
-                    {simulation.gasUsed}
-                  </div>
-                </div>
-
-                {simulation.events.length > 0 && (
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium">
-                      Events ({simulation.events.length})
-                    </p>
-                    <div className="max-h-48 overflow-y-auto rounded-md border bg-muted/50 p-2 space-y-2">
-                      {simulation.events.map((event, i) => (
-                        <div key={i} className="text-xs">
-                          <code className="text-primary font-medium">
-                            {event.type}
-                          </code>
-                          <pre className="mt-1 text-muted-foreground overflow-x-auto">
-                            {JSON.stringify(event.data, null, 2)}
-                          </pre>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {simulation.changes.length > 0 && (
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium">
-                      State Changes ({simulation.changes.length})
-                    </p>
-                    <div className="max-h-36 overflow-y-auto rounded-md border bg-muted/50 p-2 space-y-1">
-                      {simulation.changes.map((change, i) => (
-                        <div key={i} className="text-xs">
-                          <Badge variant="outline" className="text-[10px] mr-1">
-                            {change.type}
-                          </Badge>
-                          {change.resource && (
-                            <code className="text-muted-foreground">
-                              {change.resource}
-                            </code>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </>
+              <SimulationResult simulation={simulation} textSize="text-sm" />
             )}
           </CardContent>
         </Card>

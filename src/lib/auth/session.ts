@@ -1,6 +1,13 @@
+import "server-only";
 import { jwtVerify, SignJWT } from "jose";
 
-const secret = new TextEncoder().encode(process.env.JWT_SECRET ?? "dev-secret");
+const rawSecret = process.env.JWT_SECRET;
+if (!rawSecret && process.env.NODE_ENV === "production") {
+  throw new Error(
+    "JWT_SECRET is required in production. Set it via the deployment environment.",
+  );
+}
+const secret = new TextEncoder().encode(rawSecret ?? "dev-secret");
 
 export interface SessionPayload {
   publicKey: string;
