@@ -1,7 +1,7 @@
 "use client";
 
 import { useWallet as useAdapterWallet } from "@aptos-labs/wallet-adapter-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { SignerStatusGrid } from "@/components/signer-status-grid";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useWallet } from "@/components/wallet-provider";
+import { deriveMultisigAddress } from "@/lib/aptos/multisig";
 import {
   addSignatureToUrl,
   decodeProposalUrl,
@@ -62,6 +63,15 @@ export function UrlProposalView() {
     }
     setData(decoded);
   }, []);
+
+  const multisigAddress = useMemo(() => {
+    if (!data) return null;
+    try {
+      return deriveMultisigAddress(data.pks, data.th).address;
+    } catch {
+      return null;
+    }
+  }, [data]);
 
   const now = Math.floor(Date.now() / 1000);
   const isExpired = data ? data.exp < now : false;
@@ -289,6 +299,19 @@ export function UrlProposalView() {
           <CardTitle className="text-base">Transaction Details</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
+          {multisigAddress && (
+            <div>
+              <span className="font-medium">Multisig: </span>
+              <a
+                href={`https://explorer.aptoslabs.com/account/${multisigAddress}?network=${data.net}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs font-mono text-blue-600 hover:underline break-all"
+              >
+                {multisigAddress}
+              </a>
+            </div>
+          )}
           <div>
             <span className="font-medium">Function: </span>
             <code className="text-xs">{data.fn}</code>

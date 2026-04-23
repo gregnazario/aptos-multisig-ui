@@ -133,6 +133,15 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
+  const [simulating, setSimulating] = useState(false);
+  const [simulation, setSimulation] = useState<{
+    success: boolean;
+    vmStatus: string;
+    gasUsed: string;
+    events: { type: string; data: unknown }[];
+    changes: { type: string; address?: string; resource?: string }[];
+  } | null>(null);
+  const [simError, setSimError] = useState<string | null>(null);
 
   const fetchProposal = useCallback(async () => {
     try {
@@ -373,6 +382,42 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
     }
   }
 
+  async function handleSimulate() {
+    if (!proposal) return;
+    setSimulating(true);
+    setSimError(null);
+    setSimulation(null);
+    try {
+      const res = await fetch("/api/multisig/simulate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          multisigAddress: proposal.multisig.address,
+          network: proposal.multisig.network,
+          payload: {
+            module: proposal.payload.module,
+            function: proposal.payload.function,
+            typeArgs:
+              proposal.payload.typeArgs ?? proposal.payload.type_args ?? [],
+            args: proposal.payload.args,
+          },
+          maxGasAmount: proposal.maxGasAmount,
+          gasUnitPrice: proposal.gasUnitPrice,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setSimError(data.error ?? "Simulation failed");
+      } else {
+        setSimulation(data);
+      }
+    } catch (err) {
+      setSimError(err instanceof Error ? err.message : "Simulation failed");
+    } finally {
+      setSimulating(false);
+    }
+  }
+
   async function handleCancel() {
     if (!proposal) return;
     setCancelling(true);
@@ -431,6 +476,17 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
           <CardTitle className="text-base">Transaction Details</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
+          <div>
+            <span className="font-medium">Multisig: </span>
+            <a
+              href={`https://explorer.aptoslabs.com/account/${proposal.multisig.address}?network=${proposal.multisig.network}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs font-mono text-blue-600 hover:underline break-all"
+            >
+              {proposal.multisig.address}
+            </a>
+          </div>
           <div>
             <span className="font-medium">Function: </span>
             <code className="text-xs">
@@ -493,6 +549,107 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
             </div>
           )}
         </CardContent>
+      </Card>
+
+      {/* Simulation */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base">Simulation</CardTitle>
+            <div className="flex items-center gap-2">
+              {simulation && (
+                <Badge
+                  className={
+                    simulation.success
+                      ? "bg-green-600 text-white"
+                      : "bg-red-600 text-white"
+                  }
+                >
+                  {simulation.success ? "Success" : "Failed"}
+                </Badge>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSimulate}
+                disabled={simulating}
+              >
+                {simulating ? "Simulating..." : "Simulate"}
+              </Button>
+            </div>
+          </div>
+          <CardDescription>
+            Preview what this transaction would do, without actually submitting
+            it on-chain.
+          </CardDescription>
+        </CardHeader>
+        {(simulation || simError) && (
+          <CardContent className="space-y-3 text-sm">
+            {simError && <p className="text-destructive text-xs">{simError}</p>}
+            {simulation && (
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <span className="text-muted-foreground">Status: </span>
+                    <span
+                      className={
+                        simulation.success ? "text-green-600" : "text-red-600"
+                      }
+                    >
+                      {simulation.vmStatus}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Gas Used: </span>
+                    {simulation.gasUsed}
+                  </div>
+                </div>
+
+                {simulation.events.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="font-medium">
+                      Events ({simulation.events.length})
+                    </p>
+                    <div className="max-h-48 overflow-y-auto rounded-md border bg-muted/50 p-2 space-y-2">
+                      {simulation.events.map((event, i) => (
+                        <div key={i} className="text-xs">
+                          <code className="text-primary font-medium">
+                            {event.type}
+                          </code>
+                          <pre className="mt-1 text-muted-foreground overflow-x-auto">
+                            {JSON.stringify(event.data, null, 2)}
+                          </pre>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {simulation.changes.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="font-medium">
+                      State Changes ({simulation.changes.length})
+                    </p>
+                    <div className="max-h-36 overflow-y-auto rounded-md border bg-muted/50 p-2 space-y-1">
+                      {simulation.changes.map((change, i) => (
+                        <div key={i} className="text-xs">
+                          <Badge variant="outline" className="text-[10px] mr-1">
+                            {change.type}
+                          </Badge>
+                          {change.resource && (
+                            <code className="text-muted-foreground">
+                              {change.resource}
+                            </code>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </CardContent>
+        )}
       </Card>
 
       {/* Signer status */}
