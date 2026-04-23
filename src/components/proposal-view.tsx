@@ -2,6 +2,7 @@
 
 import { useWallet as useAdapterWallet } from "@aptos-labs/wallet-adapter-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { OfflineSigningPanel } from "@/components/offline-signing-panel";
 import { SignerStatusGrid } from "@/components/signer-status-grid";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -665,6 +666,13 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
           />
         </CardContent>
       </Card>
+
+      {/* Offline signing / signature verification */}
+      <OfflineSigningPanel
+        rawTransactionBytes={proposal.rawTransactionBytes}
+        publicKeys={proposal.multisig.publicKeys}
+        responses={proposal.responses}
+      />
 
       {/* Network mismatch warning */}
       {connected && isSigner && !networkMatches && !isExpired && (

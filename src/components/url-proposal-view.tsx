@@ -2,6 +2,7 @@
 
 import { useWallet as useAdapterWallet } from "@aptos-labs/wallet-adapter-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { OfflineSigningPanel } from "@/components/offline-signing-panel";
 import { SignerStatusGrid } from "@/components/signer-status-grid";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -352,6 +353,18 @@ export function UrlProposalView() {
           />
         </CardContent>
       </Card>
+
+      {/* Offline signing / signature verification */}
+      <OfflineSigningPanel
+        rawTransactionBytes={data.tx}
+        publicKeys={data.pks}
+        responses={data.sigs.map(([idx, sig]) => ({
+          signerIndex: idx,
+          publicKey: data.pks[idx] ?? "",
+          signature: sig,
+          response: "signed",
+        }))}
+      />
 
       {/* Errors */}
       {error && (
