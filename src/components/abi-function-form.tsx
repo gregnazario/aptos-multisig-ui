@@ -52,7 +52,7 @@ function typeLabel(moveType: string): { label: string; placeholder: string } {
   if (t.startsWith("vector<"))
     return {
       label: `Vector<${t.slice(7, -1)}>`,
-      placeholder: "Comma-separated values",
+      placeholder: "Value",
     };
   if (t.startsWith("0x1::object::Object"))
     return { label: "Object Address", placeholder: "0x..." };
@@ -67,6 +67,86 @@ function typeLabel(moveType: string): { label: string; placeholder: string } {
     return { label: `Type Param ${t}`, placeholder: "Value" };
 
   return { label: t, placeholder: "Value" };
+}
+
+/** Returns the inner type for vector<T>, or null for non-vector or vector<u8> (hex). */
+function vectorInnerType(moveType: string): string | null {
+  if (moveType === "vector<u8>") return null;
+  if (!moveType.startsWith("vector<") || !moveType.endsWith(">")) return null;
+  return moveType.slice(7, -1);
+}
+
+/** Input for vector<T> (non-bytes): one box per element, + / × to add/remove. */
+function VectorInput({
+  innerType,
+  value,
+  onChange,
+}: {
+  innerType: string;
+  /** Comma-joined string stored by the parent. */
+  value: string;
+  onChange: (next: string) => void;
+}) {
+  const { placeholder } = typeLabel(innerType);
+  const elements = value === "" ? [""] : value.split(",");
+
+  function emit(next: string[]) {
+    // Preserve the array even when all entries are empty so user can keep typing.
+    onChange(next.join(","));
+  }
+
+  function updateElement(index: number, next: string) {
+    const copy = [...elements];
+    copy[index] = next;
+    emit(copy);
+  }
+
+  function removeElement(index: number) {
+    const copy = elements.filter((_, i) => i !== index);
+    emit(copy.length === 0 ? [""] : copy);
+  }
+
+  function addElement() {
+    emit([...elements, ""]);
+  }
+
+  return (
+    <div className="space-y-2">
+      {elements.map((el, i) => (
+        <div key={i} className="flex items-center gap-2">
+          <span className="text-[10px] text-muted-foreground/60 font-mono w-8 shrink-0">
+            [{i}]
+          </span>
+          <Input
+            placeholder={placeholder}
+            value={el}
+            onChange={(e) => updateElement(i, e.target.value)}
+            className="font-mono text-xs"
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => removeElement(i)}
+            disabled={elements.length === 1 && el === ""}
+            aria-label={`Remove element ${i}`}
+            className="shrink-0 h-8 w-8 p-0"
+          >
+            ×
+          </Button>
+        </div>
+      ))}
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={addElement}
+        className="h-7 text-xs"
+      >
+        + Add element
+      </Button>
+    </div>
+  );
 }
 
 export function AbiFunctionForm({
@@ -232,6 +312,7 @@ export function AbiFunctionForm({
           <Label className="text-sm font-medium">Arguments</Label>
           {abi.params.map((param, i) => {
             const { label, placeholder } = typeLabel(param);
+            const innerType = vectorInnerType(param);
             return (
               <div key={`arg-${i}`} className="space-y-1">
                 <Label className="text-xs text-muted-foreground">
@@ -240,12 +321,20 @@ export function AbiFunctionForm({
                     {param}
                   </code>
                 </Label>
-                <Input
-                  placeholder={placeholder}
-                  value={args[i] ?? ""}
-                  onChange={(e) => updateArg(i, e.target.value)}
-                  className="font-mono text-xs"
-                />
+                {innerType !== null ? (
+                  <VectorInput
+                    innerType={innerType}
+                    value={args[i] ?? ""}
+                    onChange={(next) => updateArg(i, next)}
+                  />
+                ) : (
+                  <Input
+                    placeholder={placeholder}
+                    value={args[i] ?? ""}
+                    onChange={(e) => updateArg(i, e.target.value)}
+                    className="font-mono text-xs"
+                  />
+                )}
               </div>
             );
           })}
