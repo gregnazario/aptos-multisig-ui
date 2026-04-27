@@ -18,6 +18,7 @@ export async function POST(request: NextRequest) {
     gasUnitPrice,
     expirationSeconds,
     feePayerAddress,
+    sequenceNumber,
   } = body;
 
   if (!multisigAddress || !network || !payload) {
@@ -36,6 +37,10 @@ export async function POST(request: NextRequest) {
       expirationSeconds: expirationSeconds ?? 86400,
       feePayerAddress: feePayerAddress ?? undefined,
       network: network as AptosNetwork,
+      accountSequenceNumber:
+        sequenceNumber !== undefined && sequenceNumber !== null
+          ? Number(sequenceNumber)
+          : undefined,
     });
 
     return NextResponse.json({
