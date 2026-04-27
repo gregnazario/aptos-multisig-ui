@@ -128,45 +128,105 @@ export function ProposalList({
     );
   }
 
-  return (
-    <div className="space-y-4">
-      {proposals.map((proposal) => {
-        const effectiveStatus = getEffectiveStatus(proposal);
-        const entryFunction = `${proposal.payload.module}::${proposal.payload.function}`;
+  // Split into active (still actionable) and inactive (terminal states).
+  // Active: pending + ready, sorted by sequence number ascending so the
+  // next-to-land sits at the top — important when queuing multiple txs.
+  // Inactive: submitted/cancelled/expired/failed, sorted by updatedAt desc
+  // so the most recent terminal events show first.
+  const active: Proposal[] = [];
+  const inactive: Proposal[] = [];
+  for (const p of proposals) {
+    const status = getEffectiveStatus(p);
+    if (status === "pending" || status === "ready") active.push(p);
+    else inactive.push(p);
+  }
+  active.sort((a, b) => a.sequenceNumber - b.sequenceNumber);
+  inactive.sort(
+    (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+  );
 
-        return (
-          <Link key={proposal.id} href={`/tx/${proposal.id}`} className="block">
-            <Card className="hover:border-primary/50 transition-colors">
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between gap-2">
-                  <CardTitle className="text-base">
-                    {proposal.description}
-                  </CardTitle>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <Badge variant={statusVariant(effectiveStatus)}>
-                      {effectiveStatus}
-                    </Badge>
-                    <Badge variant="outline">#{proposal.sequenceNumber}</Badge>
-                    {proposal.source === "dapp" && (
-                      <Badge variant="secondary">dApp</Badge>
-                    )}
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <code className="text-xs text-muted-foreground">
-                  {entryFunction}
-                </code>
-                <SignerStatusGrid
-                  publicKeys={publicKeys}
-                  responses={proposal.responses}
-                  threshold={threshold}
-                />
-              </CardContent>
-            </Card>
-          </Link>
-        );
-      })}
+  function renderProposal(proposal: Proposal) {
+    const effectiveStatus = getEffectiveStatus(proposal);
+    const entryFunction = `${proposal.payload.module}::${proposal.payload.function}`;
+    return (
+      <Link key={proposal.id} href={`/tx/${proposal.id}`} className="block">
+        <Card className="hover:border-primary/50 transition-colors">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between gap-2">
+              <CardTitle className="text-base">
+                {proposal.description}
+              </CardTitle>
+              <div className="flex items-center gap-2 shrink-0">
+                <Badge variant={statusVariant(effectiveStatus)}>
+                  {effectiveStatus}
+                </Badge>
+                <Badge
+                  variant="outline"
+                  title={`Sequence number ${proposal.sequenceNumber}`}
+                >
+                  seq #{proposal.sequenceNumber}
+                </Badge>
+                {proposal.source === "dapp" && (
+                  <Badge variant="secondary">dApp</Badge>
+                )}
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <code className="text-xs text-muted-foreground">
+              {entryFunction}
+            </code>
+            <SignerStatusGrid
+              publicKeys={publicKeys}
+              responses={proposal.responses}
+              threshold={threshold}
+            />
+          </CardContent>
+        </Card>
+      </Link>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <section className="space-y-3">
+        <div className="flex items-baseline justify-between">
+          <h3 className="text-sm font-semibold">
+            Active{" "}
+            <span className="text-muted-foreground font-normal">
+              ({active.length})
+            </span>
+          </h3>
+          {active.length > 0 && (
+            <p className="text-xs text-muted-foreground">
+              ordered by sequence number
+            </p>
+          )}
+        </div>
+        {active.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No active proposals. Create a new one to get started.
+          </p>
+        ) : (
+          <div className="space-y-4">{active.map(renderProposal)}</div>
+        )}
+      </section>
+
+      {inactive.length > 0 && (
+        <section className="space-y-3">
+          <div className="flex items-baseline justify-between">
+            <h3 className="text-sm font-semibold text-muted-foreground">
+              History <span className="font-normal">({inactive.length})</span>
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              submitted, cancelled, expired, failed
+            </p>
+          </div>
+          <div className="space-y-4 opacity-90">
+            {inactive.map(renderProposal)}
+          </div>
+        </section>
+      )}
     </div>
   );
 }
