@@ -220,6 +220,8 @@ export function ProposalBuilder({
               expirationSeconds: expirationHours * 3600,
               feePayerAddress: feePayerAddress.trim() || undefined,
               source: "manual",
+              sequenceNumber: built.sequenceNumber,
+              expirationTimestampSecs: built.expirationTimestampSecs,
               creatorPublicKey,
               creatorSignature,
               creatorFullMessage,
