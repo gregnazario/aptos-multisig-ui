@@ -2,6 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import {
+  effectiveProposalStatus,
+  ProposalStatusBadge,
+} from "@/components/proposal-status-badge";
 import { SignerStatusGrid } from "@/components/signer-status-grid";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -55,29 +59,10 @@ interface ProposalListProps {
 }
 
 function getEffectiveStatus(proposal: Proposal): string {
-  if (proposal.status === "pending") {
-    const now = Math.floor(Date.now() / 1000);
-    if (proposal.expirationTimestampSecs < now) {
-      return "expired";
-    }
-  }
-  return proposal.status;
-}
-
-function statusVariant(
-  status: string,
-): "default" | "secondary" | "destructive" | "outline" {
-  switch (status) {
-    case "ready":
-      return "default";
-    case "submitted":
-      return "secondary";
-    case "expired":
-    case "failed":
-      return "destructive";
-    default:
-      return "outline";
-  }
+  return effectiveProposalStatus(
+    proposal.status,
+    proposal.expirationTimestampSecs,
+  );
 }
 
 export function ProposalList({
@@ -146,7 +131,6 @@ export function ProposalList({
   );
 
   function renderProposal(proposal: Proposal) {
-    const effectiveStatus = getEffectiveStatus(proposal);
     const entryFunction = `${proposal.payload.module}::${proposal.payload.function}`;
     return (
       <Link key={proposal.id} href={`/tx/${proposal.id}`} className="block">
@@ -157,9 +141,10 @@ export function ProposalList({
                 {proposal.description}
               </CardTitle>
               <div className="flex items-center gap-2 shrink-0">
-                <Badge variant={statusVariant(effectiveStatus)}>
-                  {effectiveStatus}
-                </Badge>
+                <ProposalStatusBadge
+                  status={proposal.status}
+                  expirationTimestampSecs={proposal.expirationTimestampSecs}
+                />
                 <Badge
                   variant="outline"
                   title={`Sequence number ${proposal.sequenceNumber}`}
