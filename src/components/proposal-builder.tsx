@@ -2,7 +2,7 @@
 
 import { useWallet as useAdapterWallet } from "@aptos-labs/wallet-adapter-react";
 import type React from "react";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AbiFunctionForm } from "@/components/abi-function-form";
 import {
   SimulationResult,
@@ -54,6 +54,12 @@ export function ProposalBuilder({
   const [gasPrice, setGasPrice] = useState(100);
   const [expirationHours, setExpirationHours] = useState(24);
   const [feePayerAddress, setFeePayerAddress] = useState("");
+  // Optional manual override for the sequence number. Leave empty to let the
+  // SDK auto-fetch the multisig's current on-chain sequence number. Set
+  // explicitly when queueing multiple proposals — each one needs a distinct
+  // sequence number (typically `currentOnChain + 0`, `+ 1`, `+ 2`, ...).
+  const [sequenceOverride, setSequenceOverride] = useState("");
+  const [onChainSeq, setOnChainSeq] = useState<number | null>(null);
 
   // ABI-driven form state
   const [abiTypeArgs, setAbiTypeArgs] = useState<string[]>([]);
@@ -70,6 +76,26 @@ export function ProposalBuilder({
   const [error, setError] = useState<string | null>(null);
   const [successUrl, setSuccessUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+
+  // Fetch the multisig's current on-chain sequence number once so we can
+  // show the user what "auto" would resolve to and what the next free slot
+  // is when queueing.
+  useEffect(() => {
+    let cancelled = false;
+    fetch(
+      `/api/multisig/${encodeURIComponent(multisigAddress)}/sequence-number?network=${network}`,
+    )
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { sequenceNumber?: number } | null) => {
+        if (!cancelled && data && typeof data.sequenceNumber === "number") {
+          setOnChainSeq(data.sequenceNumber);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [multisigAddress, network]);
 
   const handleAbiChange = useCallback(
     (values: {
@@ -145,6 +171,18 @@ export function ProposalBuilder({
 
       const payload = buildPayload();
 
+      const seqOverrideTrimmed = sequenceOverride.trim();
+      let parsedSeq: number | undefined;
+      if (seqOverrideTrimmed.length > 0) {
+        const n = Number(seqOverrideTrimmed);
+        if (!Number.isInteger(n) || n < 0) {
+          throw new Error(
+            "Sequence number must be a non-negative integer (or leave it blank).",
+          );
+        }
+        parsedSeq = n;
+      }
+
       const buildRes = await fetch("/api/multisig/build-tx", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -156,6 +194,7 @@ export function ProposalBuilder({
           gasUnitPrice: gasPrice,
           expirationSeconds: expirationHours * 3600,
           feePayerAddress: feePayerAddress.trim() || undefined,
+          sequenceNumber: parsedSeq,
         }),
       });
 
@@ -463,6 +502,55 @@ export function ProposalBuilder({
                     value={feePayerAddress}
                     onChange={(e) => setFeePayerAddress(e.target.value)}
                   />
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="sequenceOverride">
+                      Sequence Number{" "}
+                      <span className="text-muted-foreground">
+                        (optional — leave blank to auto-fetch)
+                      </span>
+                    </Label>
+                    <span className="text-xs text-muted-foreground">
+                      On-chain:{" "}
+                      <span className="font-mono text-foreground">
+                        {onChainSeq !== null ? onChainSeq : "…"}
+                      </span>
+                      {onChainSeq !== null && (
+                        <button
+                          type="button"
+                          className="ml-2 underline hover:text-foreground"
+                          onClick={() =>
+                            setSequenceOverride(String(onChainSeq))
+                          }
+                        >
+                          use
+                        </button>
+                      )}
+                    </span>
+                  </div>
+                  <Input
+                    id="sequenceOverride"
+                    type="number"
+                    min={0}
+                    step={1}
+                    placeholder={
+                      onChainSeq !== null
+                        ? `auto = ${onChainSeq}`
+                        : "auto-fetch from chain"
+                    }
+                    value={sequenceOverride}
+                    onChange={(e) => setSequenceOverride(e.target.value)}
+                  />
+                  {onChainSeq !== null && (
+                    <p className="text-xs text-muted-foreground">
+                      To queue multiple proposals, give each a distinct sequence
+                      starting at {onChainSeq} (e.g. {onChainSeq},{" "}
+                      {onChainSeq + 1}, {onChainSeq + 2}, …). Only one tx per
+                      sequence number can land on chain.
+                    </p>
+                  )}
                 </div>
               </div>
 
