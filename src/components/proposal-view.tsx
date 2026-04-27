@@ -144,6 +144,7 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
     publicKey,
     network: walletNetwork,
     verifyIdentity,
+    isAdmin,
   } = useWallet();
 
   const [proposal, setProposal] = useState<ProposalData | null>(null);
@@ -792,14 +793,16 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
         </Card>
       )}
 
-      {/* Cancel button — any signer can cancel a pending or ready proposal */}
+      {/* Cancel button — any signer or admin can cancel a pending/ready proposal */}
       {connected &&
-        isSigner &&
+        (isSigner || isAdmin) &&
         (proposal.status === "pending" || proposal.status === "ready") && (
           <Card>
             <CardContent className="pt-6 flex items-center justify-between">
               <p className="text-sm text-muted-foreground">
-                Any signer can cancel this proposal.
+                {isSigner
+                  ? "Any signer can cancel this proposal."
+                  : "Admins can cancel any proposal."}
               </p>
               <Button
                 variant="destructive"
