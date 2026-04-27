@@ -5,6 +5,9 @@ export interface BalanceChange {
   asset: string;
   amount: string;
   kind: "coin" | "fa";
+  assetSymbol?: string;
+  assetName?: string;
+  assetDecimals?: number;
 }
 
 const APT_ASSETS = new Set([
@@ -19,32 +22,57 @@ function shortAddr(a: string) {
   return `0x${cleaned.slice(0, 6)}…${cleaned.slice(-4)}`;
 }
 
-function assetLabel(asset: string): string {
-  if (APT_ASSETS.has(asset) || APT_ASSETS.has(asset.toLowerCase()))
-    return "APT";
-  // Coin<T>: show trailing type name
-  const generic = asset.match(/::([^:<>]+)>?$/);
-  if (generic) return generic[1];
-  return shortAddr(asset);
+function normalizeAddr(a: string): string {
+  return a.toLowerCase().replace(/^0x/, "").padStart(64, "0");
 }
 
-function formatAmount(amount: string, asset: string): string {
-  const isApt = APT_ASSETS.has(asset) || APT_ASSETS.has(asset.toLowerCase());
-  const negative = amount.startsWith("-");
-  const raw = negative ? amount.slice(1) : amount;
-  if (!isApt) return (negative ? "-" : "") + raw;
-  // Format with 8 decimals for APT
-  const padded = raw.padStart(9, "0");
-  const whole = padded.slice(0, -8).replace(/^0+(?=\d)/, "");
-  const frac = padded.slice(-8).replace(/0+$/, "");
-  const body = frac ? `${whole}.${frac}` : whole;
+function assetLabel(c: BalanceChange): string {
+  if (c.assetSymbol) return c.assetSymbol;
+  if (APT_ASSETS.has(c.asset) || APT_ASSETS.has(c.asset.toLowerCase()))
+    return "APT";
+  const generic = c.asset.match(/::([^:<>]+)>?$/);
+  if (generic) return generic[1];
+  return shortAddr(c.asset);
+}
+
+/**
+ * Format `amount` (a signed decimal string of base units) using the
+ * asset's decimals. Falls back to the raw integer string when decimals
+ * are unknown so we never silently misrepresent an amount.
+ */
+function formatAmount(c: BalanceChange): string {
+  const negative = c.amount.startsWith("-");
+  const raw = negative ? c.amount.slice(1) : c.amount;
+  const decimals =
+    c.assetDecimals ??
+    (APT_ASSETS.has(c.asset) || APT_ASSETS.has(c.asset.toLowerCase())
+      ? 8
+      : null);
+  if (decimals === null || decimals === 0) {
+    const grouped = Number.isFinite(Number(raw))
+      ? Number(raw).toLocaleString()
+      : raw;
+    return (negative ? "-" : "") + grouped;
+  }
+  const padded = raw.padStart(decimals + 1, "0");
+  const wholeRaw = padded.slice(0, -decimals).replace(/^0+(?=\d)/, "");
+  const fracRaw = padded.slice(-decimals).replace(/0+$/, "");
+  const wholeFormatted = Number(wholeRaw || "0").toLocaleString();
+  const body = fracRaw ? `${wholeFormatted}.${fracRaw}` : wholeFormatted;
   return (negative ? "-" : "") + body;
 }
 
-export function BalanceChanges({ changes }: { changes: BalanceChange[] }) {
+export function BalanceChanges({
+  changes,
+  multisigAddress,
+}: {
+  changes: BalanceChange[];
+  /** When supplied, rows for this address are tagged "this multisig". */
+  multisigAddress?: string;
+}) {
   if (changes.length === 0) return null;
 
-  // Sort: biggest absolute change first, decreases before increases at same magnitude
+  // Sort: biggest absolute base-unit change first.
   const sorted = [...changes].sort((a, b) => {
     const absA = a.amount.startsWith("-") ? a.amount.slice(1) : a.amount;
     const absB = b.amount.startsWith("-") ? b.amount.slice(1) : b.amount;
@@ -52,13 +80,21 @@ export function BalanceChanges({ changes }: { changes: BalanceChange[] }) {
     return absB.localeCompare(absA);
   });
 
+  const normalizedMultisig = multisigAddress
+    ? normalizeAddr(multisigAddress)
+    : null;
+
   return (
     <div className="space-y-2">
       <p className="font-medium text-sm">Balance Changes ({sorted.length})</p>
       <div className="rounded-md border divide-y">
         {sorted.map((c, i) => {
           const negative = c.amount.startsWith("-");
-          const display = formatAmount(c.amount, c.asset);
+          const display = formatAmount(c);
+          const symbolOrFallback = assetLabel(c);
+          const isMultisig =
+            normalizedMultisig !== null &&
+            normalizeAddr(c.address) === normalizedMultisig;
           return (
             <div
               key={`${c.address}-${c.asset}-${i}`}
@@ -78,6 +114,15 @@ export function BalanceChanges({ changes }: { changes: BalanceChange[] }) {
                 >
                   {shortAddr(c.address)}
                 </code>
+                {isMultisig && (
+                  <Badge
+                    variant="secondary"
+                    className="text-[10px] shrink-0"
+                    title="This multisig account"
+                  >
+                    this multisig
+                  </Badge>
+                )}
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <span
@@ -91,9 +136,9 @@ export function BalanceChanges({ changes }: { changes: BalanceChange[] }) {
                 </span>
                 <code
                   className="text-muted-foreground font-mono"
-                  title={c.asset}
+                  title={c.assetName ?? c.asset}
                 >
-                  {assetLabel(c.asset)}
+                  {symbolOrFallback}
                 </code>
               </div>
             </div>
