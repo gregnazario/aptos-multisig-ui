@@ -192,8 +192,11 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
   // Poll on-chain status after submission at 5s, 10s, 60s
   const pollTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
 
+  // Only `proposal?.status` gates the effect; depending on `proposal` too
+  // would restart polling on every unrelated refetch (new object identity
+  // on each fetch).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentionally narrow on `proposal?.status`; depending on `proposal` would restart polling on every unrelated refetch.
   useEffect(() => {
-    // Clear any existing timers
     pollTimers.current.forEach(clearTimeout);
     pollTimers.current = [];
 
@@ -207,7 +210,6 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
         if (res.ok) {
           const data = await res.json();
           if (data.status !== "submitted") {
-            // Status changed — refresh the full proposal
             fetchProposal();
           }
         }
@@ -225,8 +227,6 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
       pollTimers.current.forEach(clearTimeout);
       pollTimers.current = [];
     };
-    // Only `proposal?.status` gates the effect; depending on `proposal` too
-    // would restart polling on every unrelated refetch.
   }, [proposal?.status, proposalId, fetchProposal]);
 
   if (loading) {

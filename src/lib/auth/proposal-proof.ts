@@ -42,5 +42,5 @@ export function hexToBytes(input: string): Uint8Array {
 }
 
 export function bytesToHex(bytes: Uint8Array): string {
-  return "0x" + hex(bytes);
+  return `0x${hex(bytes)}`;
 }

@@ -222,6 +222,9 @@ export function AbiFunctionForm({
     [moduleAddress, moduleName, functionName, network],
   );
 
+  // retryToken is included so the Retry button can force a re-run while
+  // still going through the same debounce + abort machinery.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: retryToken is intentionally a re-run trigger, not read inside the effect.
   useEffect(() => {
     const controller = new AbortController();
     const timeout = setTimeout(() => {
@@ -231,8 +234,6 @@ export function AbiFunctionForm({
       clearTimeout(timeout);
       controller.abort();
     };
-    // retryToken is included so the Retry button can force a re-run while
-    // still going through the same debounce + abort machinery.
   }, [fetchAbi, retryToken]);
 
   // Notify parent when values change
