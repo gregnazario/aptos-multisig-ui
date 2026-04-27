@@ -5,6 +5,7 @@ import {
   AptosWalletAdapterProvider,
   useWallet as useAdapterWallet,
 } from "@aptos-labs/wallet-adapter-react";
+import type React from "react";
 import {
   createContext,
   useCallback,

@@ -55,7 +55,7 @@ export function SetupVerifier({ setupId }: { setupId: string }) {
   }, [setupId]);
 
   useEffect(() => {
-    fetchSetup();
+    fetchSetup().catch(console.error);
   }, [fetchSetup]);
 
   const isSignerInSetup =

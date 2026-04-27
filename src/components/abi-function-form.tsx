@@ -198,18 +198,16 @@ export function AbiFunctionForm({
 
         // Initialize arg arrays to match param count
         setTypeArgs((prev) => {
-          const next = Array.from(
+          return Array.from(
             { length: data.genericTypeParams },
             (_, i) => prev[i] ?? "",
           );
-          return next;
         });
         setArgs((prev) => {
-          const next = Array.from(
+          return Array.from(
             { length: data.params.length },
             (_, i) => prev[i] ?? "",
           );
-          return next;
         });
       } catch (err) {
         if ((err as Error).name === "AbortError") return;
@@ -228,7 +226,7 @@ export function AbiFunctionForm({
   useEffect(() => {
     const controller = new AbortController();
     const timeout = setTimeout(() => {
-      fetchAbi(controller.signal);
+      fetchAbi(controller.signal).catch(console.error);
     }, 500);
     return () => {
       clearTimeout(timeout);

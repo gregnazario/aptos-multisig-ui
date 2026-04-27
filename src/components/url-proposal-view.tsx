@@ -217,7 +217,7 @@ export function UrlProposalView() {
 
   const copyUrl = useCallback(() => {
     const url = updatedUrl ?? window.location.href;
-    navigator.clipboard.writeText(url);
+    navigator.clipboard.writeText(url).catch(console.info);
     setCopiedUrl(true);
     setTimeout(() => setCopiedUrl(false), 2000);
   }, [updatedUrl]);

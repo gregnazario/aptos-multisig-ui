@@ -217,7 +217,7 @@ function StandardCreatorBody() {
   function copyLink() {
     if (!setupData) return;
     const url = `${window.location.origin}/multisig/setup/${setupData.id}`;
-    navigator.clipboard.writeText(url);
+    navigator.clipboard.writeText(url).catch(console.info);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }

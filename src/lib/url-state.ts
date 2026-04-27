@@ -33,7 +33,7 @@ export function encodeProposalUrl(
   basePath: string = "/tx/sign",
 ): string {
   const json = JSON.stringify(data);
-  const base64 = btoa(unescape(encodeURIComponent(json)));
+  const base64 = btoa(decodeURIComponent(encodeURIComponent(json)));
   // Make URL-safe: replace + with -, / with _, remove trailing =
   const urlSafe = base64
     .replace(/\+/g, "-")
@@ -50,7 +50,7 @@ export function decodeProposalUrl(hash: string): UrlProposalData | null {
     const base64 = hash.replace(/^#/, "").replace(/-/g, "+").replace(/_/g, "/");
     // Add back padding
     const padded = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
-    const json = decodeURIComponent(escape(atob(padded)));
+    const json = decodeURIComponent(encodeURIComponent(atob(padded)));
     return JSON.parse(json) as UrlProposalData;
   } catch {
     return null;

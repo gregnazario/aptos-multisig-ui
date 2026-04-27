@@ -1,6 +1,7 @@
 "use client";
 
 import { useWallet as useAdapterWallet } from "@aptos-labs/wallet-adapter-react";
+import type React from "react";
 import { useCallback, useState } from "react";
 import { AbiFunctionForm } from "@/components/abi-function-form";
 import {
@@ -126,7 +127,7 @@ export function ProposalBuilder({
     }
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.SubmitEvent) {
     e.preventDefault();
     setError(null);
     setSuccessUrl(null);

@@ -26,14 +26,14 @@ Aptos natively supports **MultiEd25519** authentication at the protocol level â€
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| Framework | [Next.js](https://nextjs.org) 16 (App Router) |
-| Database | SQLite via [Drizzle ORM](https://orm.drizzle.team) + [better-sqlite3](https://github.com/WiseLibs/better-sqlite3) |
-| Blockchain | [@aptos-labs/ts-sdk](https://github.com/aptos-labs/aptos-ts-sdk) |
-| Wallet | [@aptos-labs/wallet-adapter-react](https://github.com/aptos-labs/aptos-wallet-adapter) |
-| Styling | [Tailwind CSS](https://tailwindcss.com) v4 + [shadcn/ui](https://ui.shadcn.com) |
-| Linting | [Biome](https://biomejs.dev) |
+| Layer      | Technology                                                                                                        |
+|------------|-------------------------------------------------------------------------------------------------------------------|
+| Framework  | [Next.js](https://nextjs.org) 16 (App Router)                                                                     |
+| Database   | SQLite via [Drizzle ORM](https://orm.drizzle.team) + [better-sqlite3](https://github.com/WiseLibs/better-sqlite3) |
+| Blockchain | [@aptos-labs/ts-sdk](https://github.com/aptos-labs/aptos-ts-sdk)                                                  |
+| Wallet     | [@aptos-labs/wallet-adapter-react](https://github.com/aptos-labs/aptos-wallet-adapter)                            |
+| Styling    | [Tailwind CSS](https://tailwindcss.com) v4 + [shadcn/ui](https://ui.shadcn.com)                                   |
+| Linting    | [Biome](https://biomejs.dev)                                                                                      |
 
 ## Getting Started
 
@@ -206,14 +206,14 @@ With URL-based proposals, the frontend can work entirely without a backend for t
 
 ## Scripts
 
-| Command | Description |
-|---------|-------------|
-| `pnpm dev` | Start dev server (port 3123) |
-| `pnpm build` | Production build |
-| `pnpm start` | Start production server |
-| `pnpm test` | Run tests |
-| `pnpm lint` | Check lint and formatting |
-| `pnpm lint:fix` | Auto-fix lint issues |
-| `pnpm format` | Format all source files |
-| `pnpm drizzle-kit push` | Push schema to database |
-| `pnpm drizzle-kit studio` | Open Drizzle Studio |
+| Command                   | Description                  |
+|---------------------------|------------------------------|
+| `pnpm dev`                | Start dev server (port 3123) |
+| `pnpm build`              | Production build             |
+| `pnpm start`              | Start production server      |
+| `pnpm test`               | Run tests                    |
+| `pnpm lint`               | Check lint and formatting    |
+| `pnpm lint:fix`           | Auto-fix lint issues         |
+| `pnpm format`             | Format all source files      |
+| `pnpm drizzle-kit push`   | Push schema to database      |
+| `pnpm drizzle-kit studio` | Open Drizzle Studio          |
