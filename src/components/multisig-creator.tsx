@@ -3,6 +3,7 @@
 import { useWallet as useAdapterWallet } from "@aptos-labs/wallet-adapter-react";
 import { CheckCircle2, Clock, Copy, ExternalLink } from "lucide-react";
 import { useCallback, useState } from "react";
+import { AdminMultisigCreator } from "@/components/admin-multisig-creator";
 import { ConnectWalletButton } from "@/components/connect-wallet-button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useWallet } from "@/components/wallet-provider";
 
 const ADDRESS_REGEX = /^0x[0-9a-fA-F]{64}$/;
@@ -40,6 +42,35 @@ interface SetupData {
 }
 
 export function MultisigCreator() {
+  const { isAdmin } = useWallet();
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Create New Multisig</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {isAdmin ? (
+          <Tabs defaultValue="standard">
+            <TabsList className="mb-4">
+              <TabsTrigger value="standard">Standard</TabsTrigger>
+              <TabsTrigger value="admin">Admin</TabsTrigger>
+            </TabsList>
+            <TabsContent value="standard">
+              <StandardCreatorBody />
+            </TabsContent>
+            <TabsContent value="admin">
+              <AdminMultisigCreator />
+            </TabsContent>
+          </Tabs>
+        ) : (
+          <StandardCreatorBody />
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function StandardCreatorBody() {
   const { connected, address, network } = useWallet();
   const adapter = useAdapterWallet();
 
@@ -205,239 +236,234 @@ export function MultisigCreator() {
     ) ?? false;
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Create New Multisig</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {!connected && (
-          <div className="flex flex-col items-center gap-4 py-8 text-center">
-            <p className="text-muted-foreground">
-              Connect your Petra wallet to create a multisig. Your wallet will
-              be added as the first signer.
-            </p>
-            <ConnectWalletButton />
+    <div className="space-y-6">
+      {!connected && (
+        <div className="flex flex-col items-center gap-4 py-8 text-center">
+          <p className="text-muted-foreground">
+            Connect your Petra wallet to create a multisig. Your wallet will be
+            added as the first signer.
+          </p>
+          <ConnectWalletButton />
+        </div>
+      )}
+
+      {connected && step === "configure" && (
+        <>
+          <div className="space-y-2">
+            <Label>Number of Signers</Label>
+            <Select
+              value={numSigners}
+              onValueChange={(val) => {
+                const n = Number(val);
+                setNumSigners(n);
+                if (threshold > n) setThreshold(n);
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {Array.from({ length: 9 }, (_, i) => i + 2).map((n) => (
+                  <SelectItem key={n} value={n}>
+                    {n} signers
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-        )}
 
-        {connected && step === "configure" && (
-          <>
-            <div className="space-y-2">
-              <Label>Number of Signers</Label>
-              <Select
-                value={numSigners}
-                onValueChange={(val) => {
-                  const n = Number(val);
-                  setNumSigners(n);
-                  if (threshold > n) setThreshold(n);
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Array.from({ length: 9 }, (_, i) => i + 2).map((n) => (
+          <div className="space-y-2">
+            <Label>Threshold</Label>
+            <Select
+              value={threshold}
+              onValueChange={(val) => setThreshold(Number(val))}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {Array.from({ length: numSigners }, (_, i) => i + 1).map(
+                  (n) => (
                     <SelectItem key={n} value={n}>
-                      {n} signers
+                      {n}
                     </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+                  ),
+                )}
+              </SelectContent>
+            </Select>
+            <p className="text-sm text-muted-foreground">
+              {threshold}-of-{numSigners} multisig
+            </p>
+          </div>
 
-            <div className="space-y-2">
-              <Label>Threshold</Label>
-              <Select
-                value={threshold}
-                onValueChange={(val) => setThreshold(Number(val))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Array.from({ length: numSigners }, (_, i) => i + 1).map(
-                    (n) => (
-                      <SelectItem key={n} value={n}>
-                        {n}
-                      </SelectItem>
-                    ),
-                  )}
-                </SelectContent>
-              </Select>
-              <p className="text-sm text-muted-foreground">
-                {threshold}-of-{numSigners} multisig
-              </p>
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="label">Label (optional)</Label>
+            <Input
+              id="label"
+              placeholder="My team wallet"
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+            />
+          </div>
 
+          {error && (
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
+          <Button onClick={goToAddresses}>Next</Button>
+        </>
+      )}
+
+      {connected && step === "addresses" && (
+        <>
+          <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="label">Label (optional)</Label>
+              <Label>Signer #0 (your wallet)</Label>
               <Input
-                id="label"
-                placeholder="My team wallet"
-                value={label}
-                onChange={(e) => setLabel(e.target.value)}
+                value={address ?? ""}
+                disabled
+                className="font-mono text-xs"
               />
             </div>
 
-            {error && (
-              <Alert variant="destructive">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-
-            <Button onClick={goToAddresses}>Next</Button>
-          </>
-        )}
-
-        {connected && step === "addresses" && (
-          <>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Signer #0 (your wallet)</Label>
+            {signerAddresses.map((addr, index) => (
+              <div key={index} className="space-y-2">
+                <Label>Signer #{index + 1}</Label>
                 <Input
-                  value={address ?? ""}
-                  disabled
-                  className="font-mono text-xs"
+                  placeholder="0x... (64 hex chars)"
+                  value={addr}
+                  onChange={(e) => updateSignerAddress(index, e.target.value)}
+                  className={`font-mono text-xs ${addr && !ADDRESS_REGEX.test(addr) ? "border-red-500" : ""}`}
                 />
               </div>
+            ))}
+          </div>
 
-              {signerAddresses.map((addr, index) => (
-                <div key={index} className="space-y-2">
-                  <Label>Signer #{index + 1}</Label>
-                  <Input
-                    placeholder="0x... (64 hex chars)"
-                    value={addr}
-                    onChange={(e) => updateSignerAddress(index, e.target.value)}
-                    className={`font-mono text-xs ${addr && !ADDRESS_REGEX.test(addr) ? "border-red-500" : ""}`}
-                  />
-                </div>
-              ))}
-            </div>
+          {error && (
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
 
-            {error && (
-              <Alert variant="destructive">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
+          <div className="flex gap-4">
+            <Button variant="outline" onClick={() => setStep("configure")}>
+              Back
+            </Button>
+            <Button onClick={createSetup} disabled={loading}>
+              {loading ? "Creating..." : "Create Setup"}
+            </Button>
+          </div>
+        </>
+      )}
 
-            <div className="flex gap-4">
-              <Button variant="outline" onClick={() => setStep("configure")}>
-                Back
-              </Button>
-              <Button onClick={createSetup} disabled={loading}>
-                {loading ? "Creating..." : "Create Setup"}
-              </Button>
-            </div>
-          </>
-        )}
+      {connected && step === "verify" && setupData && (
+        <>
+          <div className="space-y-2">
+            <p className="text-sm font-medium">
+              {setupData.threshold}-of-{setupData.addresses.length} multisig
+              {setupData.label ? ` - ${setupData.label}` : ""}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Network: {setupData.network}
+            </p>
+          </div>
 
-        {connected && step === "verify" && setupData && (
-          <>
+          {/* Creator verification */}
+          {!isCreatorVerified && (
             <div className="space-y-2">
-              <p className="text-sm font-medium">
-                {setupData.threshold}-of-{setupData.addresses.length} multisig
-                {setupData.label ? ` - ${setupData.label}` : ""}
+              <p className="text-sm">
+                Sign to verify your identity as a signer.
               </p>
-              <p className="text-xs text-muted-foreground">
-                Network: {setupData.network}
-              </p>
+              <Button onClick={verifyCreator} disabled={loading}>
+                {loading ? "Signing..." : "Sign to Verify"}
+              </Button>
             </div>
+          )}
 
-            {/* Creator verification */}
-            {!isCreatorVerified && (
+          {isCreatorVerified && (
+            <>
+              {/* Shareable link */}
               <div className="space-y-2">
-                <p className="text-sm">
-                  Sign to verify your identity as a signer.
-                </p>
-                <Button onClick={verifyCreator} disabled={loading}>
-                  {loading ? "Signing..." : "Sign to Verify"}
-                </Button>
+                <Label>Share this link with other signers</Label>
+                <div className="flex gap-2">
+                  <Input
+                    value={`${typeof window !== "undefined" ? window.location.origin : ""}/multisig/setup/${setupData.id}`}
+                    readOnly
+                    className="font-mono text-xs"
+                  />
+                  <Button variant="outline" size="sm" onClick={copyLink}>
+                    {copied ? "Copied!" : <Copy className="h-4 w-4" />}
+                  </Button>
+                </div>
               </div>
-            )}
 
-            {isCreatorVerified && (
-              <>
-                {/* Shareable link */}
-                <div className="space-y-2">
-                  <Label>Share this link with other signers</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      value={`${typeof window !== "undefined" ? window.location.origin : ""}/multisig/setup/${setupData.id}`}
-                      readOnly
-                      className="font-mono text-xs"
-                    />
-                    <Button variant="outline" size="sm" onClick={copyLink}>
-                      {copied ? "Copied!" : <Copy className="h-4 w-4" />}
-                    </Button>
-                  </div>
+              {/* Verification status */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label>Signer Verification Status</Label>
+                  <Button variant="outline" size="sm" onClick={refreshStatus}>
+                    Refresh
+                  </Button>
                 </div>
-
-                {/* Verification status */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <Label>Signer Verification Status</Label>
-                    <Button variant="outline" size="sm" onClick={refreshStatus}>
-                      Refresh
-                    </Button>
-                  </div>
-                  {setupData.addresses.map((addr: string, i: number) => {
-                    const verified = setupData.verifications.some(
-                      (v) => v.address.toLowerCase() === addr.toLowerCase(),
-                    );
-                    return (
-                      <div
-                        key={addr}
-                        className="flex items-center justify-between rounded-md border p-3"
-                      >
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs font-medium">Signer #{i}</p>
-                          <p className="truncate font-mono text-xs text-muted-foreground">
-                            {addr}
-                          </p>
-                        </div>
-                        {verified ? (
-                          <Badge variant="default" className="ml-2 shrink-0">
-                            <CheckCircle2 className="mr-1 h-3 w-3" />
-                            Verified
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="ml-2 shrink-0">
-                            <Clock className="mr-1 h-3 w-3" />
-                            Pending
-                          </Badge>
-                        )}
+                {setupData.addresses.map((addr: string, i: number) => {
+                  const verified = setupData.verifications.some(
+                    (v) => v.address.toLowerCase() === addr.toLowerCase(),
+                  );
+                  return (
+                    <div
+                      key={addr}
+                      className="flex items-center justify-between rounded-md border p-3"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-medium">Signer #{i}</p>
+                        <p className="truncate font-mono text-xs text-muted-foreground">
+                          {addr}
+                        </p>
                       </div>
-                    );
-                  })}
-                </div>
+                      {verified ? (
+                        <Badge variant="default" className="ml-2 shrink-0">
+                          <CheckCircle2 className="mr-1 h-3 w-3" />
+                          Verified
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="ml-2 shrink-0">
+                          <Clock className="mr-1 h-3 w-3" />
+                          Pending
+                        </Badge>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
 
-                {/* Complete state */}
-                {setupData.status === "complete" && (
-                  <Alert>
-                    <AlertDescription className="space-y-2">
-                      <p className="font-medium">
-                        All signers verified! Multisig created.
-                      </p>
-                      <a
-                        href={`/multisig/setup/${setupData.id}`}
-                        className="inline-flex items-center gap-1 text-sm underline"
-                      >
-                        Go to Dashboard <ExternalLink className="h-3 w-3" />
-                      </a>
-                    </AlertDescription>
-                  </Alert>
-                )}
-              </>
-            )}
+              {/* Complete state */}
+              {setupData.status === "complete" && (
+                <Alert>
+                  <AlertDescription className="space-y-2">
+                    <p className="font-medium">
+                      All signers verified! Multisig created.
+                    </p>
+                    <a
+                      href={`/multisig/setup/${setupData.id}`}
+                      className="inline-flex items-center gap-1 text-sm underline"
+                    >
+                      Go to Dashboard <ExternalLink className="h-3 w-3" />
+                    </a>
+                  </AlertDescription>
+                </Alert>
+              )}
+            </>
+          )}
 
-            {error && (
-              <Alert variant="destructive">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-          </>
-        )}
-      </CardContent>
-    </Card>
+          {error && (
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+        </>
+      )}
+    </div>
   );
 }

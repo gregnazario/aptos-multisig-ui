@@ -9,6 +9,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useRef,
   useState,
 } from "react";
@@ -30,6 +31,12 @@ interface MultisigWalletContextValue {
   switchNetwork: (network: AptosNetwork) => void;
   sessionToken: string | null;
   verifyIdentity: () => Promise<string>;
+  /**
+   * True when the connected wallet's public key derives to an address listed
+   * in the server's APTOS_ADMIN_ADDRESSES allowlist. Determined via a passive
+   * lookup against /api/admin/check; no signature required to populate it.
+   */
+  isAdmin: boolean;
 }
 
 const MultisigWalletContext = createContext<MultisigWalletContextValue | null>(
@@ -47,6 +54,7 @@ function MultisigWalletInner({
   const [selectedNetwork, setSelectedNetwork] =
     useState<AptosNetwork>(initialNetwork);
   const [sessionToken, setSessionToken] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const tokenRef = useRef<string | null>(null);
 
   const address = adapter.connected
@@ -66,10 +74,33 @@ function MultisigWalletInner({
       ? "This wallet uses a keyless or non-Ed25519 key, which is incompatible with MultiEd25519 multisig."
       : null;
 
+  // Passively check admin status whenever the connected public key changes.
+  // Admin status is a function of the public key alone (and the server-side
+  // allowlist), so we don't need a signed session to display the badge.
+  useEffect(() => {
+    if (!publicKey) {
+      setIsAdmin(false);
+      return;
+    }
+    let cancelled = false;
+    fetch(`/api/admin/check?publicKey=${encodeURIComponent(publicKey)}`)
+      .then((r) => (r.ok ? r.json() : { isAdmin: false }))
+      .then((data: { isAdmin?: boolean }) => {
+        if (!cancelled) setIsAdmin(Boolean(data.isAdmin));
+      })
+      .catch(() => {
+        if (!cancelled) setIsAdmin(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [publicKey]);
+
   const switchNetwork = useCallback(
     (net: AptosNetwork) => {
       setSelectedNetwork(net);
       setSessionToken(null);
+      setIsAdmin(false);
       tokenRef.current = null;
       if (adapter.connected) {
         adapter.changeNetwork(networkToEnum[net]).catch(() => {});
@@ -110,8 +141,12 @@ function MultisigWalletInner({
       throw new Error(err.error ?? "Verification failed");
     }
 
-    const { token } = await res.json();
+    const { token, isAdmin: adminFlag } = (await res.json()) as {
+      token: string;
+      isAdmin?: boolean;
+    };
     setSessionToken(token);
+    setIsAdmin(Boolean(adminFlag));
     tokenRef.current = token;
     return token;
   }, [adapter, address, publicKey, selectedNetwork]);
@@ -127,6 +162,7 @@ function MultisigWalletInner({
         switchNetwork,
         sessionToken,
         verifyIdentity,
+        isAdmin,
       }}
     >
       {children}

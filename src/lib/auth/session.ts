@@ -13,6 +13,7 @@ export interface SessionPayload {
   publicKey: string;
   address: string;
   network: string;
+  isAdmin?: boolean;
 }
 
 export async function createSessionToken(
