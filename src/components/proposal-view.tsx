@@ -618,21 +618,70 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
             </div>
           )}
           <div>
+            <span className="font-medium">Sequence Number: </span>
+            <code className="text-xs">{proposal.sequenceNumber}</code>
+          </div>
+          <div>
             <span className="font-medium">Max Gas: </span>
-            {proposal.maxGasAmount}
+            {proposal.maxGasAmount.toLocaleString()}
           </div>
           <div>
             <span className="font-medium">Gas Unit Price: </span>
-            {proposal.gasUnitPrice}
+            {proposal.gasUnitPrice.toLocaleString()}
+          </div>
+          <div>
+            <span className="font-medium">Max Fee: </span>
+            {(proposal.maxGasAmount * proposal.gasUnitPrice).toLocaleString()}{" "}
+            <span className="text-xs text-muted-foreground">
+              octas (≈{" "}
+              {((proposal.maxGasAmount * proposal.gasUnitPrice) / 1e8).toFixed(
+                8,
+              )}{" "}
+              APT)
+            </span>
           </div>
           <div>
             <span className="font-medium">Expiration: </span>
             {expirationDate}
           </div>
+          <div>
+            <span className="font-medium">Created: </span>
+            {new Date(proposal.createdAt).toLocaleString()}
+          </div>
+          {proposal.updatedAt !== proposal.createdAt && (
+            <div>
+              <span className="font-medium">Last Updated: </span>
+              {new Date(proposal.updatedAt).toLocaleString()}
+            </div>
+          )}
+          <div>
+            <span className="font-medium">Source: </span>
+            <code className="text-xs">{proposal.source}</code>
+            {proposal.sourceDappUrl && (
+              <span className="text-xs text-muted-foreground">
+                {" "}
+                ({proposal.sourceDappUrl})
+              </span>
+            )}
+          </div>
           {proposal.feePayerAddress && (
             <div>
               <span className="font-medium">Fee Payer: </span>
-              <code className="text-xs">{proposal.feePayerAddress}</code>
+              <a
+                href={`https://explorer.aptoslabs.com/account/${proposal.feePayerAddress}?network=${proposal.multisig.network}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs font-mono text-blue-600 hover:underline break-all"
+              >
+                {proposal.feePayerAddress}
+              </a>
+              {proposal.feePayerSignature ? (
+                <span className="ml-2 text-xs text-green-600">✓ signed</span>
+              ) : (
+                <span className="ml-2 text-xs text-muted-foreground">
+                  awaiting signature
+                </span>
+              )}
             </div>
           )}
           {proposal.txHash && (
