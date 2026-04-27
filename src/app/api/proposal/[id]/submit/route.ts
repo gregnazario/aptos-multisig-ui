@@ -1,20 +1,48 @@
 import { eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import type { AptosNetwork } from "@/lib/aptos/client";
-import { combineSignatures, deriveMultisigAddress } from "@/lib/aptos/multisig";
+import {
+  combineSignatures,
+  deriveMultisigAddress,
+  findSignerIndex,
+} from "@/lib/aptos/multisig";
 import { submitMultisigTransaction } from "@/lib/aptos/transaction";
+import { isAdmin } from "@/lib/auth/admin";
+import { verifySessionToken } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { multisigs, proposals, signerResponses } from "@/lib/db/schema";
 import { getGasStationConfig, signAsFeePayer } from "@/lib/gas-station";
 import { stringify } from "@/lib/utils";
 
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
 
-  // 1. Fetch proposal (must be status "ready")
+  // 1. Verify session — submission must come from an authenticated wallet.
+  const authHeader = request.headers.get("authorization");
+  if (!authHeader?.startsWith("Bearer ")) {
+    return NextResponse.json(
+      {
+        error:
+          "Authentication required. Connect your wallet to submit this proposal.",
+      },
+      { status: 401 },
+    );
+  }
+
+  let session;
+  try {
+    session = await verifySessionToken(authHeader.slice(7));
+  } catch {
+    return NextResponse.json(
+      { error: "Invalid or expired session. Please reconnect your wallet." },
+      { status: 401 },
+    );
+  }
+
+  // 2. Fetch proposal (must be status "ready")
   const proposal = await db.query.proposals.findFirst({
     where: eq(proposals.id, id),
   });
@@ -30,7 +58,7 @@ export async function POST(
     );
   }
 
-  // 2. Fetch parent multisig
+  // 3. Fetch parent multisig
   const multisig = await db.query.multisigs.findFirst({
     where: eq(multisigs.id, proposal.multisigId),
   });
@@ -39,6 +67,24 @@ export async function POST(
     return NextResponse.json(
       { error: "Associated multisig not found" },
       { status: 404 },
+    );
+  }
+
+  // 3b. Authorize: caller must be a signer on this multisig OR an admin.
+  // The session JWT's `isAdmin` flag is set at /api/verify time and bound to
+  // the wallet's signed challenge, so we trust it here. We re-check `isAdmin`
+  // against the current allowlist as a belt-and-braces measure in case the
+  // env var changed since the token was issued.
+  const publicKeys: string[] = JSON.parse(multisig.publicKeys);
+  const callerIsSigner = findSignerIndex(publicKeys, session.publicKey) !== -1;
+  const callerIsAdmin = Boolean(session.isAdmin) || isAdmin(session.publicKey);
+  if (!callerIsSigner && !callerIsAdmin) {
+    return NextResponse.json(
+      {
+        error:
+          "Only a signer on this multisig or an admin can submit this proposal.",
+      },
+      { status: 403 },
     );
   }
 
@@ -92,7 +138,6 @@ export async function POST(
   );
 
   // 5. Derive the MultiEd25519PublicKey
-  const publicKeys: string[] = JSON.parse(multisig.publicKeys);
   const { multiPublicKey } = deriveMultisigAddress(
     publicKeys,
     multisig.threshold,
