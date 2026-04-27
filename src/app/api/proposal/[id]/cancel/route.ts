@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { findSignerIndex } from "@/lib/aptos/multisig";
+import { isAdmin } from "@/lib/auth/admin";
 import { verifySessionToken } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { multisigs, proposals } from "@/lib/db/schema";
@@ -39,12 +40,18 @@ export async function POST(
     return NextResponse.json({ error: "Multisig not found" }, { status: 500 });
   }
 
-  // Verify the caller is a signer
+  // Authorize: caller must be a signer on this multisig OR an admin.
+  // Re-check `isAdmin` against the current allowlist as a belt-and-braces
+  // measure in case the env var changed since the JWT was issued.
   const publicKeys: string[] = JSON.parse(multisig.publicKeys);
-  const signerIndex = findSignerIndex(publicKeys, session.publicKey);
-  if (signerIndex === -1) {
+  const callerIsSigner = findSignerIndex(publicKeys, session.publicKey) !== -1;
+  const callerIsAdmin = Boolean(session.isAdmin) || isAdmin(session.publicKey);
+  if (!callerIsSigner && !callerIsAdmin) {
     return NextResponse.json(
-      { error: "You are not a signer on this multisig" },
+      {
+        error:
+          "Only a signer on this multisig or an admin can cancel this proposal.",
+      },
       { status: 403 },
     );
   }
