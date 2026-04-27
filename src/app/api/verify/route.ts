@@ -1,5 +1,6 @@
 import { Ed25519PublicKey, Ed25519Signature } from "@aptos-labs/ts-sdk";
 import { type NextRequest, NextResponse } from "next/server";
+import { isAdmin } from "@/lib/auth/admin";
 import { createSessionToken } from "@/lib/auth/session";
 
 const usedNonces = new Set<string>();
@@ -50,6 +51,12 @@ export async function POST(request: NextRequest) {
   }
 
   usedNonces.add(nonce);
-  const token = await createSessionToken({ publicKey, address, network });
-  return NextResponse.json({ token });
+  const admin = isAdmin(publicKey);
+  const token = await createSessionToken({
+    publicKey,
+    address,
+    network,
+    isAdmin: admin,
+  });
+  return NextResponse.json({ token, isAdmin: admin });
 }

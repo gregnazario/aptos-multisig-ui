@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Suspense } from "react";
 import "./globals.css";
+import { AdminBadge } from "@/components/admin-badge";
 import { ConnectWalletButton } from "@/components/connect-wallet-button";
 import { NetworkSwitcher } from "@/components/network-switcher";
 import { WalletProvider } from "@/components/wallet-provider";
@@ -38,6 +39,7 @@ export default function RootLayout({
               Aptos Multisig
             </a>
             <div className="flex items-center gap-3">
+              <AdminBadge />
               <Suspense
                 fallback={<div className="w-[130px] h-9 rounded-md border" />}
               >
