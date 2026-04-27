@@ -372,8 +372,12 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
     setSubmitting(true);
     setSubmitError(null);
     try {
+      const token = await verifyIdentity();
       const res = await fetch(`/api/proposal/${proposalId}/submit`, {
         method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       });
 
       if (!res.ok) {
