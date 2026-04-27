@@ -47,6 +47,14 @@ export function isAdmin(publicKeyHex: string): boolean {
   }
 }
 
+/**
+ * Return the configured admin addresses as 0x-prefixed 64-char hex strings.
+ * Intended for diagnostic logging at startup; do not use for authorization.
+ */
+export function getAdminAddresses(): string[] {
+  return Array.from(loadAdminAddresses()).map((a) => `0x${a}`);
+}
+
 /** Exported for tests to reset the module-level cache. */
 export function __resetAdminCacheForTests(): void {
   cached = null;
