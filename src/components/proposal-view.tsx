@@ -186,7 +186,7 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
   }, [proposalId]);
 
   useEffect(() => {
-    fetchProposal();
+    fetchProposal().catch(console.error);
   }, [fetchProposal]);
 
   // Poll on-chain status after submission at 5s, 10s, 60s
@@ -210,7 +210,7 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
         if (res.ok) {
           const data = await res.json();
           if (data.status !== "submitted") {
-            fetchProposal();
+            await fetchProposal();
           }
         }
       } catch {

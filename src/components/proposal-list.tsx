@@ -107,7 +107,7 @@ export function ProposalList({
         setLoading(false);
       }
     }
-    fetchProposals();
+    fetchProposals().catch(console.error);
   }, [address, network]);
 
   if (loading) {

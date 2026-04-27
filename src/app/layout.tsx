@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import type React from "react";
 import { Suspense } from "react";
 import "./globals.css";
 import { AdminBadge } from "@/components/admin-badge";

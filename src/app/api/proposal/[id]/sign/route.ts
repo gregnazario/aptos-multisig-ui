@@ -111,7 +111,7 @@ export async function POST(
     signature,
   });
 
-  // 8. Count signed responses and check threshold
+  // 8. Count signed responses and check the threshold
   const allResponses = await db.query.signerResponses.findMany({
     where: eq(signerResponses.proposalId, id),
   });

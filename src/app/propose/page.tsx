@@ -252,7 +252,7 @@ function ProposeContent() {
               <Button
                 variant="outline"
                 onClick={() => {
-                  navigator.clipboard.writeText(successUrl);
+                  navigator.clipboard.writeText(successUrl).catch(console.info);
                   setCopied(true);
                   setTimeout(() => setCopied(false), 2000);
                 }}
