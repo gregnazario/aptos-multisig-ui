@@ -166,6 +166,18 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
     fetchProposal().catch(console.error);
   }, [fetchProposal]);
 
+  // Auto-run a simulation as soon as we have the proposal so users see the
+  // expected balance changes without having to click "Simulate". Skipped for
+  // already-submitted proposals (the chain has the real outcome by then) and
+  // when a previous run is in flight.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: simulating/simulation are status flags, not effect inputs
+  useEffect(() => {
+    if (!proposal) return;
+    if (proposal.status === "submitted") return;
+    if (simulation || simulating) return;
+    autoSimulate();
+  }, [proposal?.id, proposal?.status]);
+
   // Poll on-chain status after submission at 5s, 10s, 60s
   const pollTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
 
@@ -370,33 +382,58 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
     }
   }
 
+  async function runSimulation(): Promise<{
+    ok: boolean;
+    data?: SimulationResultData;
+    error?: string;
+  }> {
+    if (!proposal) return { ok: false, error: "No proposal" };
+    const res = await fetch("/api/multisig/simulate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        multisigAddress: proposal.multisig.address,
+        network: proposal.multisig.network,
+        payload: {
+          module: proposal.payload.module,
+          function: proposal.payload.function,
+          typeArgs: proposal.payload.typeArgs,
+          args: proposal.payload.args,
+        },
+        maxGasAmount: proposal.maxGasAmount,
+        gasUnitPrice: proposal.gasUnitPrice,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) return { ok: false, error: data.error ?? "Simulation failed" };
+    return { ok: true, data };
+  }
+
+  async function autoSimulate() {
+    setSimulating(true);
+    try {
+      const result = await runSimulation();
+      if (result.ok && result.data) setSimulation(result.data);
+      // Don't surface errors from the auto-run: the user can still click
+      // "Simulate" to see a real error message.
+    } catch {
+      /* swallow */
+    } finally {
+      setSimulating(false);
+    }
+  }
+
   async function handleSimulate() {
     if (!proposal) return;
     setSimulating(true);
     setSimError(null);
     setSimulation(null);
     try {
-      const res = await fetch("/api/multisig/simulate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          multisigAddress: proposal.multisig.address,
-          network: proposal.multisig.network,
-          payload: {
-            module: proposal.payload.module,
-            function: proposal.payload.function,
-            typeArgs: proposal.payload.typeArgs,
-            args: proposal.payload.args,
-          },
-          maxGasAmount: proposal.maxGasAmount,
-          gasUnitPrice: proposal.gasUnitPrice,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setSimError(data.error ?? "Simulation failed");
-      } else {
-        setSimulation(data);
+      const result = await runSimulation();
+      if (!result.ok) {
+        setSimError(result.error ?? "Simulation failed");
+      } else if (result.data) {
+        setSimulation(result.data);
       }
     } catch (err) {
       setSimError(err instanceof Error ? err.message : "Simulation failed");
@@ -712,7 +749,11 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
           <CardContent className="space-y-3 text-sm">
             {simError && <p className="text-destructive text-xs">{simError}</p>}
             {simulation && (
-              <SimulationResult simulation={simulation} textSize="text-sm" />
+              <SimulationResult
+                simulation={simulation}
+                textSize="text-sm"
+                multisigAddress={proposal.multisig.address}
+              />
             )}
           </CardContent>
         )}

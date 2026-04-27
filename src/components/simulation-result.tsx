@@ -19,6 +19,8 @@ interface SimulationResultProps {
   simulation: SimulationResultData;
   /** Tailwind text-size class for body rows (matches caller typography). */
   textSize?: "text-xs" | "text-sm";
+  /** When supplied, balance-change rows for this address get a "this multisig" tag. */
+  multisigAddress?: string;
 }
 
 /**
@@ -30,6 +32,7 @@ interface SimulationResultProps {
 export function SimulationResult({
   simulation,
   textSize = "text-sm",
+  multisigAddress,
 }: SimulationResultProps) {
   return (
     <>
@@ -49,7 +52,10 @@ export function SimulationResult({
       </div>
 
       {simulation.balanceChanges && simulation.balanceChanges.length > 0 && (
-        <BalanceChanges changes={simulation.balanceChanges} />
+        <BalanceChanges
+          changes={simulation.balanceChanges}
+          multisigAddress={multisigAddress}
+        />
       )}
 
       {simulation.events.length > 0 && (
