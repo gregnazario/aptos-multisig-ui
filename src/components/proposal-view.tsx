@@ -3,6 +3,7 @@
 import { useWallet as useAdapterWallet } from "@aptos-labs/wallet-adapter-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { OfflineSigningPanel } from "@/components/offline-signing-panel";
+import { ProposalStatusBadge } from "@/components/proposal-status-badge";
 import { SignerStatusGrid } from "@/components/signer-status-grid";
 import {
   SimulationResult,
@@ -77,31 +78,6 @@ interface ProposalData {
     label: string | null;
   };
   responses: SignerResponse[];
-}
-
-function getStatusBadge(status: string, expirationSecs: number) {
-  const now = Math.floor(Date.now() / 1000);
-  if (status === "pending" && expirationSecs < now) {
-    return <Badge variant="destructive">Expired</Badge>;
-  }
-  switch (status) {
-    case "pending":
-      return <Badge variant="secondary">Pending</Badge>;
-    case "ready":
-      return <Badge className="bg-green-600 text-white">Ready</Badge>;
-    case "submitted":
-      return <Badge className="bg-blue-600 text-white">Submitted</Badge>;
-    case "expired":
-      return <Badge variant="destructive">Expired</Badge>;
-    case "failed":
-      return <Badge variant="destructive">Failed</Badge>;
-    case "cancelled":
-      return <Badge variant="secondary">Cancelled</Badge>;
-    case "confirmed":
-      return <Badge className="bg-green-600 text-white">Confirmed</Badge>;
-    default:
-      return <Badge variant="secondary">{status}</Badge>;
-  }
 }
 
 function getSourceBadge(source: string) {
@@ -510,10 +486,10 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
             <CardTitle className="text-lg">Proposal</CardTitle>
             <div className="flex gap-2">
               {getSourceBadge(proposal.source)}
-              {getStatusBadge(
-                proposal.status,
-                proposal.expirationTimestampSecs,
-              )}
+              <ProposalStatusBadge
+                status={proposal.status}
+                expirationTimestampSecs={proposal.expirationTimestampSecs}
+              />
             </div>
           </div>
           <CardDescription>{proposal.description}</CardDescription>
