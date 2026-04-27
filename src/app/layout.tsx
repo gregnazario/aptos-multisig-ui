@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import type React from "react";
 import { Suspense } from "react";
 import "./globals.css";
+import { ActiveMultisigBanner } from "@/components/active-multisig-banner";
 import { AdminBadge } from "@/components/admin-badge";
 import { ConnectWalletButton } from "@/components/connect-wallet-button";
 import { NetworkSwitcher } from "@/components/network-switcher";
@@ -49,6 +50,9 @@ export default function RootLayout({
               <ConnectWalletButton />
             </div>
           </header>
+          <Suspense fallback={null}>
+            <ActiveMultisigBanner />
+          </Suspense>
           <main className="flex-1 p-6">{children}</main>
         </WalletProvider>
       </body>
