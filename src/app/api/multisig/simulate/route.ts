@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { getAssetMetadataMap } from "@/lib/aptos/asset-metadata";
 import { type AptosNetwork, getAptosClient } from "@/lib/aptos/client";
 
 interface BalanceChange {
@@ -6,10 +7,16 @@ interface BalanceChange {
   address: string;
   /** Asset identifier: coin type (e.g. `0x1::aptos_coin::AptosCoin`) or FA metadata object address */
   asset: string;
-  /** Net delta as a signed decimal string; negative = decrease */
+  /** Net delta as a signed decimal string of base units; negative = decrease */
   amount: string;
   /** `coin` for legacy Coin<T>, `fa` for fungible asset */
   kind: "coin" | "fa";
+  /** Resolved asset symbol (e.g. `APT`, `USDC`) when known */
+  assetSymbol?: string;
+  /** Resolved asset name (e.g. `Aptos Coin`) when known */
+  assetName?: string;
+  /** Number of decimal places for `amount` when known */
+  assetDecimals?: number;
 }
 
 type SimEvent = { type: string; data: unknown };
@@ -174,6 +181,26 @@ export async function POST(request: NextRequest) {
         data: c.data,
       })) ?? [];
 
+    const balanceChanges = extractBalanceChanges(rawEvents, rawChanges);
+    // Enrich with symbol/name/decimals so the UI can render `+1.234 USDC`
+    // instead of `+1234000 0xabc…`. Best-effort: assets we can't resolve
+    // pass through unchanged.
+    const metadataMap = await getAssetMetadataMap(
+      network as AptosNetwork,
+      balanceChanges.map((b) => b.asset),
+    );
+    const enrichedBalanceChanges = balanceChanges.map((b) => {
+      const meta = metadataMap[b.asset];
+      return meta
+        ? {
+            ...b,
+            assetSymbol: meta.symbol,
+            assetName: meta.name,
+            assetDecimals: meta.decimals,
+          }
+        : b;
+    });
+
     return NextResponse.json({
       success: txResult.success,
       vmStatus: txResult.vm_status,
@@ -184,7 +211,7 @@ export async function POST(request: NextRequest) {
         address: c.address,
         resource: c.data?.type,
       })),
-      balanceChanges: extractBalanceChanges(rawEvents, rawChanges),
+      balanceChanges: enrichedBalanceChanges,
     });
   } catch (err) {
     return NextResponse.json(
