@@ -26,6 +26,19 @@ export interface TransactionConfig {
   expirationSeconds?: number;
   feePayerAddress?: string;
   network: AptosNetwork;
+  /**
+   * Fix the on-chain sequence number rather than letting the SDK fetch it.
+   * Required when re-building a transaction whose bytes a client has already
+   * signed (e.g. a creator-proof signature), so the server-rebuilt bytes are
+   * byte-identical to the client-signed bytes.
+   */
+  accountSequenceNumber?: number;
+  /**
+   * Fix the absolute expiration timestamp (unix seconds) rather than deriving
+   * one from `expirationSeconds + Date.now()`. Same use case as
+   * `accountSequenceNumber`: required to make rebuilds deterministic.
+   */
+  expirationTimestampSecs?: number;
 }
 
 export interface BuiltTransaction {
@@ -46,6 +59,10 @@ export async function buildTransaction(
   const maxGasAmount = config.maxGasAmount ?? 100000;
   const gasUnitPrice = config.gasUnitPrice ?? 100;
 
+  const expireTimestamp =
+    config.expirationTimestampSecs ??
+    Math.floor(Date.now() / 1000) + expirationSeconds;
+
   const transaction = await aptos.transaction.build.simple({
     sender: senderAddress,
     data: {
@@ -57,7 +74,10 @@ export async function buildTransaction(
     options: {
       maxGasAmount,
       gasUnitPrice,
-      expireTimestamp: Math.floor(Date.now() / 1000) + expirationSeconds,
+      expireTimestamp,
+      ...(config.accountSequenceNumber !== undefined
+        ? { accountSequenceNumber: config.accountSequenceNumber }
+        : {}),
     },
     ...(config.feePayerAddress ? { withFeePayer: true } : {}),
   });

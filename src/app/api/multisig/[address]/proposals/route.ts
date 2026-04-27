@@ -75,6 +75,8 @@ export async function POST(
     maxGasAmount,
     gasUnitPrice,
     expirationSeconds,
+    expirationTimestampSecs,
+    sequenceNumber,
     feePayerAddress,
     source,
     sourceDappUrl,
@@ -107,7 +109,25 @@ export async function POST(
     return NextResponse.json({ error: "Multisig not found" }, { status: 404 });
   }
 
-  // Build the transaction first — the creator proof is over these exact bytes.
+  // Rebuild the transaction with the same parameters the client used to
+  // build the bytes they signed. We pin `accountSequenceNumber` and
+  // `expirationTimestampSecs` so the rebuild is byte-deterministic — without
+  // that, the SDK would re-fetch the on-chain sequence number and derive a
+  // fresh `expireTimestamp` from `Date.now()`, producing different bytes
+  // than the client signed and breaking the creator-proof check.
+  //
+  // If the client lies about any field (payload, gas, fee payer, etc.) the
+  // rebuilt bytes will diverge from the signed bytes and the canonical-hash
+  // check below will reject the request.
+  if (sequenceNumber === undefined || expirationTimestampSecs === undefined) {
+    return NextResponse.json(
+      {
+        error:
+          "Missing sequenceNumber or expirationTimestampSecs (required to verify creator proof).",
+      },
+      { status: 400 },
+    );
+  }
   let built;
   try {
     built = await buildTransaction({
@@ -118,6 +138,8 @@ export async function POST(
       expirationSeconds,
       feePayerAddress,
       network: network as AptosNetwork,
+      accountSequenceNumber: sequenceNumber,
+      expirationTimestampSecs,
     });
   } catch (err: unknown) {
     const message =
