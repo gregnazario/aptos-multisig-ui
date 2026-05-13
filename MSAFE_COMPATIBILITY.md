@@ -525,7 +525,7 @@ If an owner only has a raw private key (not in any browser wallet), use the
 2. Sign externally — for example, with `@aptos-labs/ts-sdk` in Node:
 
    ```ts
-   import { Ed25519PrivateKey, Hex, sha3_256 } from "@aptos-labs/ts-sdk";
+   import { Ed25519PrivateKey, Hex } from "@aptos-labs/ts-sdk";
 
    const priv = new Ed25519PrivateKey("0x<owner_priv_hex>");
    const txnBytes = Hex.fromHexString("0x<exported-bytes-hex>").toUint8Array();
@@ -559,7 +559,7 @@ When a simulation fails, the error message is usually one of:
 | `SEQUENCE_NUMBER_TOO_OLD` | The wallet has sent another transaction since the proposal was built | **Permanent for this proposal.** Build a new proposal — it'll pick up the new sequence number automatically. |
 | `OUT_OF_GAS` / `MAX_GAS_AMOUNT_EXCEEDED` | Gas budget too low | **Permanent for this proposal.** Rebuild with a higher `maxGasAmount` (e.g. 200000). |
 | `OBJECT_NOT_FOUND` / missing resource | An address or coin type is wrong | **Permanent.** Check the captured payload — likely a type argument typo. |
-| `Connection refused` / RPC 5xx | Aptos node node temporarily unreachable | **Temporary.** Retry. |
+| `Connection refused` / RPC 5xx | Aptos node temporarily unreachable | **Temporary.** Retry. |
 
 A useful rule of thumb: anything mentioning **oracle, slippage, RPC, or
 connection** is usually transient. Anything mentioning **balance, gas,
