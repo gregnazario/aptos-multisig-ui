@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MSafe-style Wallet Compatibility — aptos-multisig-ui</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 16px; line-height: 1.7; color: #1e293b; background: #f8fafc;
+    }
+    .container { max-width: 920px; margin: 0 auto; padding: 0 24px; }
+    section { margin-bottom: 56px; }
+
+    header {
+      background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
+      color: #fff; padding: 56px 24px 48px; text-align: center;
+    }
+    header h1 { font-size: 2.1rem; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 10px; }
+    header p { font-size: 1.05rem; color: #94a3b8; max-width: 660px; margin: 0 auto; }
+    .badge {
+      display: inline-block; background: #10b981; color: #fff;
+      font-size: 0.75rem; font-weight: 600; padding: 3px 10px;
+      border-radius: 999px; margin-bottom: 16px;
+      letter-spacing: 0.5px; text-transform: uppercase;
+    }
+
+    nav {
+      background: #1e293b; padding: 12px 24px;
+      position: sticky; top: 0; z-index: 100;
+      display: flex; gap: 22px; flex-wrap: wrap; justify-content: center;
+    }
+    nav a { color: #94a3b8; text-decoration: none; font-size: 0.82rem; font-weight: 500; }
+    nav a:hover { color: #f1f5f9; }
+
+    main { padding: 44px 0; }
+
+    h2 {
+      font-size: 1.6rem; font-weight: 700; color: #0f172a;
+      margin-bottom: 8px; padding-bottom: 8px; border-bottom: 3px solid #e2e8f0;
+    }
+    h3 { font-size: 1.15rem; font-weight: 600; color: #1e293b; margin: 32px 0 10px; }
+    h4 { font-size: 1rem; font-weight: 600; color: #334155; margin: 22px 0 8px; }
+    p { margin-bottom: 14px; color: #334155; }
+    ul, ol { margin: 8px 0 16px 24px; color: #334155; }
+    li { margin-bottom: 6px; }
+    strong { color: #0f172a; }
+    a { color: #4f46e5; }
+
+    .section-label {
+      font-size: 0.72rem; font-weight: 700; letter-spacing: 1.5px;
+      text-transform: uppercase; color: #64748b; margin-bottom: 4px;
+    }
+
+    .callout {
+      border-radius: 10px; padding: 14px 20px; margin: 18px 0;
+      border-left: 4px solid;
+    }
+    .callout-green { background: #f0fdf4; border-color: #10b981; }
+    .callout-blue  { background: #eff6ff; border-color: #3b82f6; }
+    .callout-amber { background: #fffbeb; border-color: #f59e0b; }
+    .callout-rose  { background: #fff1f2; border-color: #f43f5e; }
+    .callout p:last-child { margin-bottom: 0; }
+    .callout strong { display: block; margin-bottom: 4px; }
+
+    pre {
+      background: #0f172a; color: #e2e8f0; border-radius: 10px;
+      padding: 18px 20px; overflow-x: auto;
+      font-size: 0.82rem; line-height: 1.6; margin: 14px 0;
+    }
+    code { font-family: "SF Mono", "Fira Code", Consolas, monospace; }
+    p code, li code, td code {
+      background: #f1f5f9; color: #be185d;
+      padding: 2px 6px; border-radius: 4px; font-size: 0.85em;
+    }
+
+    table {
+      width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.9rem;
+    }
+    th {
+      background: #1e293b; color: #f1f5f9; padding: 10px 14px;
+      text-align: left; font-weight: 600;
+    }
+    th:first-child { border-radius: 8px 0 0 0; }
+    th:last-child  { border-radius: 0 8px 0 0; }
+    td {
+      padding: 10px 14px; border-bottom: 1px solid #e2e8f0; vertical-align: top;
+    }
+    tr:nth-child(even) td { background: #fafbff; }
+    .tag-tmp { background: #fef3c7; color: #b45309; padding: 2px 8px; border-radius: 4px; font-weight: 600; font-size: 0.78rem; }
+    .tag-perm { background: #fee2e2; color: #b91c1c; padding: 2px 8px; border-radius: 4px; font-weight: 600; font-size: 0.78rem; }
+
+    .diagram-box, .diagram-box-wide {
+      background: #fff; border: 1px solid #e2e8f0; border-radius: 12px;
+      padding: 28px 20px; margin: 20px 0;
+      text-align: center; overflow-x: auto;
+    }
+    .diagram-box-wide { padding: 36px 40px; margin: 20px -160px; }
+    @media (max-width: 1280px) { .diagram-box-wide { margin: 20px -60px; } }
+    @media (max-width: 1080px) { .diagram-box-wide { margin: 20px 0; } }
+    .diagram-title {
+      font-size: 0.78rem; font-weight: 700; letter-spacing: 1px;
+      text-transform: uppercase; color: #64748b; margin-bottom: 18px;
+    }
+    .diagram-box .mermaid, .diagram-box-wide .mermaid { display: inline-block; }
+    .diagram-box .mermaid svg { max-width: 100%; height: auto; }
+    .diagram-box-wide .mermaid svg { height: auto; min-width: 680px; display: block; margin: 0 auto; }
+
+    .compare-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin: 18px 0;
+    }
+    @media (max-width: 720px) { .compare-grid { grid-template-columns: 1fr; } }
+    .compare-card {
+      background: #fff; border: 2px solid;
+      border-radius: 12px; padding: 18px;
+    }
+    .compare-a { border-color: #3b82f6; }
+    .compare-b { border-color: #10b981; }
+    .compare-card h4 { margin-top: 0; }
+    .compare-tag {
+      font-size: 0.7rem; font-weight: 700; letter-spacing: 1px;
+      text-transform: uppercase; padding: 2px 8px; border-radius: 4px;
+      display: inline-block; margin-bottom: 8px;
+    }
+    .tag-a { background: #dbeafe; color: #1d4ed8; }
+    .tag-b { background: #d1fae5; color: #047857; }
+
+    .steps { list-style: none; margin: 16px 0; padding: 0; }
+    .steps li {
+      display: flex; gap: 14px; align-items: flex-start;
+      margin-bottom: 12px; padding: 14px 16px;
+      background: #fff; border-radius: 10px; border: 1px solid #e2e8f0;
+    }
+    .step-num {
+      min-width: 28px; height: 28px; background: #4f46e5; color: #fff;
+      border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 0.8rem; flex-shrink: 0;
+    }
+    .step-content strong { display: block; margin-bottom: 2px; }
+    .step-content p { margin: 0; font-size: 0.9rem; }
+
+    .toc {
+      background: #fff; border: 1px solid #e2e8f0; border-radius: 12px;
+      padding: 20px 24px; margin: 24px 0;
+    }
+    .toc ol { margin: 6px 0 0 20px; }
+    .toc li { margin-bottom: 4px; font-size: 0.9rem; }
+
+    footer {
+      background: #1e293b; color: #64748b;
+      text-align: center; padding: 22px; font-size: 0.82rem;
+    }
+    footer a { color: #94a3b8; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <div class="badge">Operating guide</div>
+    <h1>MSafe-style Wallet Compatibility</h1>
+    <p>Operating a legacy MultiEd25519 treasury wallet with this app, including
+       a practical workflow for transacting against any Aptos dApp.</p>
+  </div>
+</header>
+
+<nav>
+  <a href="#overview">Overview</a>
+  <a href="#setup">Setup</a>
+  <a href="#import">Import wallet</a>
+  <a href="#simple">Simple transfers</a>
+  <a href="#dapps">dApp interaction</a>
+  <a href="#thala">Thala</a>
+  <a href="#pcs">PancakeSwap</a>
+  <a href="#manual">Manual fallback</a>
+  <a href="#signing">Signing</a>
+  <a href="#sim">Simulating & submitting</a>
+  <a href="#faq">FAQ</a>
+</nav>
+
+<main>
+<div class="container">
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<section id="overview">
+  <div class="section-label">Section 1</div>
+  <h2>What this guide covers</h2>
+
+  <p>This app manages <strong>MultiEd25519</strong> treasury wallets on Aptos at
+  the protocol level. It is fully compatible with multisig accounts produced by
+  older coordination services that use the same MultiEd25519 scheme — the
+  underlying account is a standard Aptos MultiEd25519 account, and coordination
+  is just signature collection on top.</p>
+
+  <p>You will be able to:</p>
+  <ul>
+    <li>Import an existing MultiEd25519 wallet by address</li>
+    <li>Build and sign arbitrary entry function transactions</li>
+    <li>Interact with any Aptos dApp — even those that don't natively support multisig</li>
+    <li>Collect signatures from co-signers via share links</li>
+    <li>Submit the combined transaction directly to chain</li>
+  </ul>
+
+  <p>You will need:</p>
+  <ul>
+    <li>The wallet address</li>
+    <li>Access to <em>≥ threshold</em> of the owner private keys — either in
+        browser wallets or as raw keys for offline signing</li>
+  </ul>
+
+  <div class="toc">
+    <strong>Table of contents</strong>
+    <ol>
+      <li><a href="#setup">Prerequisites &amp; running the app</a></li>
+      <li><a href="#import">Importing your multisig wallet</a></li>
+      <li><a href="#simple">Day-to-day operations: simple transfers</a></li>
+      <li><a href="#dapps">Interacting with dApps — two methods</a></li>
+      <li><a href="#thala">Worked example: Thala swap</a></li>
+      <li><a href="#pcs">Worked example: PancakeSwap swap</a></li>
+      <li><a href="#manual">Manual fallback: building a payload from scratch</a></li>
+      <li><a href="#signing">Collecting signatures</a></li>
+      <li><a href="#sim">Simulating, retrying, and submitting</a></li>
+      <li><a href="#faq">Troubleshooting / FAQ</a></li>
+      <li><a href="#future">Future: a dedicated extension</a></li>
+    </ol>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<section id="setup">
+  <div class="section-label">Section 2</div>
+  <h2>Prerequisites &amp; running the app</h2>
+
+  <h3>Prerequisites</h3>
+  <ul>
+    <li><strong>Node.js 20+</strong> and <strong>pnpm</strong></li>
+    <li>A browser wallet that holds your personal owner key —
+        <a href="https://petra.app">Petra</a>, Moveth, Rise, OKX, etc.
+        Any standard Ed25519 wallet works.</li>
+    <li>For capturing dApp transactions:
+        <a href="https://nightly.app">Nightly</a> browser extension</li>
+    <li>Familiarity with browser DevTools (opening the Console tab)</li>
+  </ul>
+
+  <h3>Quickstart (local development)</h3>
+<pre><code>git clone &lt;this repo&gt;
+cd aptos-multisig-ui
+
+pnpm install
+pnpm rebuild better-sqlite3
+pnpm drizzle-kit push    # initialise local SQLite
+
+# minimal .env.local
+cat &gt; .env.local &lt;&lt;'EOF'
+DATABASE_URL=file:local.db
+JWT_SECRET=change-me
+EOF
+
+pnpm dev</code></pre>
+
+  <p>Open <code>http://localhost:3123</code>. Connect any standard Ed25519
+  wallet (e.g. Petra) to authenticate yourself as a signer. The connected
+  wallet is your <em>personal</em> signing identity — not the multisig wallet
+  itself.</p>
+
+  <h3>Building for production</h3>
+<pre><code>pnpm build       # produces .next/
+pnpm start       # serves the built app on port 3123</code></pre>
+
+  <p><code>pnpm start</code> is a long-running process. Behind a reverse proxy
+  (nginx / Caddy / Cloudflare) for TLS, use a process supervisor — the
+  included <code>Makefile</code> assumes
+  <a href="https://pm2.keymetrics.io">pm2</a>:</p>
+
+<pre><code>make install     # pnpm install + rebuild better-sqlite3
+make build       # pnpm build
+make db-push     # apply Drizzle schema
+make restart     # pm2 restart multisig (or start if first run)
+# convenience: make deploy = install + build + db-push + restart</code></pre>
+
+  <p><code>make logs</code> / <code>make status</code> give pm2 visibility,
+  and <code>make update</code> pulls main and redeploys.</p>
+
+  <h3>Makefile reference</h3>
+  <table>
+    <tr><th>Target</th><th>What it does</th></tr>
+    <tr><td><code>make install</code></td><td><code>pnpm install</code> + <code>pnpm rebuild better-sqlite3</code></td></tr>
+    <tr><td><code>make dev</code></td><td>Dev server (<code>pnpm dev</code>)</td></tr>
+    <tr><td><code>make build</code></td><td>Production build (<code>pnpm build</code>)</td></tr>
+    <tr><td><code>make start</code></td><td>Production server (<code>pnpm start</code>)</td></tr>
+    <tr><td><code>make deploy</code></td><td>Full deploy: install + build + db-push + restart pm2</td></tr>
+    <tr><td><code>make restart</code></td><td><code>pm2 restart multisig</code> (starts if not running)</td></tr>
+    <tr><td><code>make logs</code></td><td><code>pm2 logs multisig</code></td></tr>
+    <tr><td><code>make status</code></td><td><code>pm2 status</code></td></tr>
+    <tr><td><code>make db-push</code></td><td><code>pnpm drizzle-kit push</code> — sync schema</td></tr>
+    <tr><td><code>make db-studio</code></td><td><code>pnpm drizzle-kit studio</code> — DB inspector in the browser</td></tr>
+    <tr><td><code>make lint</code> / <code>make format</code> / <code>make test</code></td><td>Biome lint, Biome format, Vitest</td></tr>
+    <tr><td><code>make update</code></td><td><code>git pull</code> then <code>make deploy</code></td></tr>
+    <tr><td><code>make clean</code></td><td>Remove <code>.next/</code> and <code>node_modules/</code></td></tr>
+  </table>
+
+  <h3>Environment variables — complete reference</h3>
+  <table>
+    <tr><th>Variable</th><th>Required</th><th>Default</th><th>What it does</th></tr>
+    <tr>
+      <td><code>DATABASE_URL</code></td><td>yes</td><td>—</td>
+      <td>SQLite path. Dev: <code>file:local.db</code>. Prod: <code>file:/data/multisig.db</code>.</td>
+    </tr>
+    <tr>
+      <td><code>JWT_SECRET</code></td><td>yes</td><td>—</td>
+      <td>Signing key for session JWTs issued at <code>/api/verify</code>. Must be stable across restarts and identical across split-deployment frontend + backend. Use a strong random value in production.</td>
+    </tr>
+    <tr>
+      <td><code>GAS_STATION_ENABLED</code></td><td>no</td><td><code>false</code></td>
+      <td>Set to <code>true</code> to enable the auto fee-payer.</td>
+    </tr>
+    <tr>
+      <td><code>GAS_STATION_PRIVATE_KEY</code></td><td>if gas station enabled</td><td>—</td>
+      <td>Hex Ed25519 private key (<code>0x…</code>) that auto-signs as fee payer.</td>
+    </tr>
+    <tr>
+      <td><code>GAS_STATION_MAX_GAS_PER_TX</code></td><td>no</td><td><code>10000</code></td>
+      <td>Cap on gas units the gas station will pay per transaction (safety guard).</td>
+    </tr>
+    <tr>
+      <td><code>GAS_STATION_NETWORKS</code></td><td>no</td><td>empty</td>
+      <td>CSV of networks where sponsorship is active, e.g. <code>devnet,testnet</code>. Mainnet is off by default.</td>
+    </tr>
+    <tr>
+      <td><code>BACKEND_URL</code></td><td>only on split frontend</td><td>—</td>
+      <td>URL of the backend API for split deployments (see below).</td>
+    </tr>
+    <tr>
+      <td><code>CORS_ORIGIN</code></td><td>only on split backend</td><td>—</td>
+      <td>Origin allowed by CORS on the backend.</td>
+    </tr>
+    <tr>
+      <td><code>ADMIN_PUBLIC_KEYS</code></td><td>no</td><td>empty</td>
+      <td>CSV of Ed25519 public keys with admin privileges (e.g. submitting on behalf of a wallet).</td>
+    </tr>
+  </table>
+
+  <h3>Selecting an Aptos network</h3>
+  <p>The network (<code>mainnet</code> / <code>testnet</code> /
+  <code>devnet</code>) is a <strong>per-multisig setting</strong> — chosen
+  when you create or import the wallet, and stored with the multisig's
+  keys. Each proposal inherits its parent multisig's network.</p>
+
+  <p>There is no global "switch network" toggle for the whole app; the same
+  running instance can manage multisigs on different networks side by side.
+  Just make sure the wallet you connect with is on the network of the
+  multisig you're operating.</p>
+
+  <h3>Gas station — automated fee sponsorship</h3>
+  <p>The gas station lets a single Ed25519 key automatically sign as the fee
+  payer for proposals from any managed multisig. Useful so the multisig
+  itself doesn't need to hold APT to pay gas.</p>
+
+<pre><code>GAS_STATION_ENABLED=true
+GAS_STATION_PRIVATE_KEY=0x&lt;hex&gt;
+GAS_STATION_MAX_GAS_PER_TX=10000
+GAS_STATION_NETWORKS=devnet,testnet</code></pre>
+
+  <p>On the proposal form, pick "Fee payer" and set it to the gas station's
+  address. On submission, if the proposal carries no
+  <code>feePayerSignature</code>, the server signs as the gas station
+  automatically. Failures are silent — submission proceeds without
+  sponsorship if anything goes wrong.</p>
+
+  <div class="callout callout-amber">
+    <strong>Security notes</strong>
+    <ul>
+      <li>The private key lives in env vars on the server. Treat the server
+          as custodial for that key.</li>
+      <li><code>GAS_STATION_MAX_GAS_PER_TX</code> is the only guard against a
+          misconfigured proposal draining the sponsor wallet. Keep it tight.</li>
+      <li>Don't enable for <code>mainnet</code> until you understand the cost
+          model — leave <code>GAS_STATION_NETWORKS</code> on test networks
+          during initial setup.</li>
+    </ul>
+  </div>
+
+  <h3>Database (SQLite via Drizzle)</h3>
+  <p>The app uses a single SQLite file (<code>local.db</code> by default).
+  Schema lives in <code>src/lib/db/schema.ts</code> and is applied with
+  Drizzle:</p>
+<pre><code>pnpm drizzle-kit push     # sync schema (idempotent)
+pnpm drizzle-kit studio   # inspect tables in a browser UI</code></pre>
+
+  <ul>
+    <li><strong>Backups</strong> = copy the <code>.db</code> file. SQLite
+        supports hot snapshots; on Linux,
+        <code>sqlite3 multisig.db ".backup '/path/snap.db'"</code>
+        works while the app runs.</li>
+    <li><strong>Schema migrations</strong> are applied by
+        <code>make db-push</code>; run this after every deploy.</li>
+    <li><strong>Concurrency:</strong> SQLite uses single-writer locking.
+        Fine for tens to low hundreds of users; for more, migrate to
+        Postgres (Drizzle supports it — just change the driver).</li>
+  </ul>
+
+  <h3>Split deployment</h3>
+  <p>The frontend (Next.js pages) and backend (API routes + SQLite) can run
+  on separate hosts. Same codebase deployed to both; the difference is env
+  config.</p>
+
+  <h4>Backend (VPS with DB)</h4>
+<pre><code>DATABASE_URL=file:/data/multisig.db
+JWT_SECRET=&lt;shared-secret&gt;
+CORS_ORIGIN=https://app.example.com</code></pre>
+<pre><code>make deploy   # builds and starts with pm2</code></pre>
+
+  <h4>Frontend (Vercel or another Next.js host)</h4>
+<pre><code>BACKEND_URL=https://api.example.com
+JWT_SECRET=&lt;shared-secret&gt;          # must match backend</code></pre>
+<pre><code>pnpm build &amp;&amp; pnpm start</code></pre>
+
+  <div class="callout callout-rose">
+    <strong>JWT_SECRET must be identical on both hosts.</strong>
+    Otherwise sessions issued by the backend won't validate on the frontend.
+  </div>
+
+  <h3>Known limitations</h3>
+  <ul>
+    <li><strong>The iframe dApp browser doesn't work on <code>localhost</code></strong>
+        for dApps whose third-party APIs (Alchemy, CoinGecko, …) whitelist
+        by origin. Those APIs reject requests from <code>localhost</code>,
+        so the dApp's UI hangs or errors. Deploy to a real domain for
+        Method A, or use the Nightly workflow (Method B) which is
+        unaffected.</li>
+    <li>The app blocks <strong>keyless / OAuth wallets</strong> (Aptos
+        Connect, Google, Apple) — they use non-Ed25519 keys that can't sit
+        in a MultiEd25519 key set. Co-signers use a standard Ed25519
+        wallet or sign offline.</li>
+    <li><strong>SQLite single-writer locking</strong> can bottleneck under
+        heavy concurrent proposal creation. For tens of users this is
+        fine.</li>
+  </ul>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<section id="import">
+  <div class="section-label">Section 3</div>
+  <h2>Importing an existing multisig wallet</h2>
+
+  <p>Go to <strong>Import → "Lookup by address"</strong> and paste the multisig
+  wallet address. The lookup endpoint fetches the wallet's last 25 transactions
+  and scans for a <code>multi_ed25519_signature</code> authenticator. Once it
+  finds one, it extracts the full public-key list and threshold and
+  reconstructs the wallet configuration.</p>
+
+  <div class="diagram-box">
+    <div class="diagram-title">Lookup-by-address import flow</div>
+    <div class="mermaid">
+flowchart LR
+    A([Enter wallet address]) --> B[Fetch last 25 txns]
+    B --> C{Any txn has\nmulti_ed25519_signature?}
+    C -- Yes --> D[Extract public_keys + threshold]
+    C -- No --> E[Manual import\nrequired]
+    D --> F[Derive address\nfrom extracted keys]
+    F --> G{Derived addr\nmatches input?}
+    G -- Match --> H([✓ Wallet imported])
+    G -- Mismatch --> I[Key order wrong\nor keys missing]
+    E --> J[Paste all keys\n+ threshold manually]
+    J --> F
+    style H fill:#bbf7d0,stroke:#10b981
+    style I fill:#fecaca,stroke:#ef4444
+    </div>
+  </div>
+
+  <div class="callout callout-blue">
+    <strong>Why this works</strong>
+    Every MultiEd25519 transaction submitted from the wallet reveals the
+    entire key set in the authenticator. Even a single past transaction is
+    enough to reconstruct the configuration. If the wallet has never sent
+    a transaction yet, you'll need to use <strong>Manual import</strong>
+    instead and provide all keys + threshold.
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<section id="simple">
+  <div class="section-label">Section 4</div>
+  <h2>Day-to-day operations: simple transfers</h2>
+
+  <p>For a plain APT transfer, click <strong>Propose Transaction</strong> on
+  the wallet dashboard. Select the ABI builder and fill:</p>
+
+  <table>
+    <tr><th>Field</th><th>Value</th></tr>
+    <tr><td>Module address</td><td><code>0x1</code></td></tr>
+    <tr><td>Module name</td><td><code>aptos_account</code></td></tr>
+    <tr><td>Function name</td><td><code>transfer</code></td></tr>
+    <tr><td>Type arguments</td><td>(none)</td></tr>
+    <tr><td>Function arguments</td><td><code>to</code> (address), <code>amount</code> (u64 octa; 1 APT = 100000000)</td></tr>
+  </table>
+
+  <p>Click <strong>Simulate</strong>, then <strong>Save proposal</strong>, and
+  share the URL with your co-signers.</p>
+
+  <p>For fungible asset (FA) transfers, use
+  <code>0x1::primary_fungible_store::transfer</code> with a
+  <code>0x1::object::Object&lt;T&gt;</code> type argument; the captured
+  payload from a dApp will tell you the exact metadata object address.</p>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<section id="dapps">
+  <div class="section-label">Section 5</div>
+  <h2>Interacting with dApps</h2>
+
+  <p>Most Aptos dApps assume the connected wallet is a single-key wallet that
+  can sign immediately. A multisig wallet cannot — it needs to collect
+  signatures over time. There are two ways to bridge the gap:</p>
+
+  <div class="compare-grid">
+    <div class="compare-card compare-a">
+      <span class="compare-tag tag-a">Method A</span>
+      <h4>Built-in dApp browser</h4>
+      <p><strong>When:</strong> the dApp loads inside an iframe (no
+         <code>X-Frame-Options</code> or restrictive CSP).</p>
+      <p><strong>How:</strong> navigate to
+         <code>/multisig/[address]/dapp</code>, enter the dApp URL.
+         The page proxies the dApp and injects a fake wallet adapter that
+         intercepts <code>signAndSubmitTransaction</code>.</p>
+      <p><strong>Strength:</strong> seamless — payload turns into a proposal
+         automatically, no copy/paste.</p>
+    </div>
+    <div class="compare-card compare-b">
+      <span class="compare-tag tag-b">Method B</span>
+      <h4>Nightly wallet in watch-only mode</h4>
+      <p><strong>When:</strong> anything else — most production DEX/CDP frontends
+         block iframe embedding.</p>
+      <p><strong>How:</strong> import the multisig as a watch-only address in
+         Nightly. When a dApp asks Nightly to sign, the payload gets
+         <code>console.log</code>'d and the sign call fails harmlessly. You
+         copy from the console into a proposal.</p>
+      <p><strong>Strength:</strong> universal — works against any Aptos dApp on
+         any wallet-adapter site, no cooperation needed.</p>
+    </div>
+  </div>
+
+  <h3>Method B — Nightly watch-only capture in detail</h3>
+
+  <h4>One-time setup</h4>
+  <ul class="steps">
+    <li>
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <strong>Install Nightly</strong>
+        <p>From <a href="https://nightly.app">nightly.app</a> (Chrome / Firefox extension).</p>
+      </div>
+    </li>
+    <li>
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <strong>Add the multisig as a watch-only address</strong>
+        <p>Nightly → <em>Add wallet → Aptos → Watch only / Track address</em>.
+           Paste the multisig wallet address.</p>
+      </div>
+    </li>
+    <li>
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <strong>Make the watch-only address active</strong>
+        <p>Switch Nightly's active wallet to the watch-only multisig before
+           visiting the dApp.</p>
+      </div>
+    </li>
+  </ul>
+
+  <h4>Capturing a payload (per transaction)</h4>
+
+  <div class="diagram-box-wide">
+    <div class="diagram-title">dApp payload capture via Nightly watch-only</div>
+    <div class="mermaid">
+sequenceDiagram
+    actor U as You
+    participant D as dApp (e.g. Thala)
+    participant N as Nightly (watch-only)
+    participant C as Browser Console
+    participant M as multisig-ui
+
+    U->>D: open dApp tab
+    U->>C: open DevTools → Console
+    D->>N: connect wallet
+    N-->>D: connected — addr = multisig
+    U->>D: click "Swap" / "Stake" / etc.
+    D->>N: signAndSubmitTransaction(payload)
+    N->>C: console.log(payload)
+    Note over N,D: no private key →<br/>signing fails, dApp errors
+    U->>C: copy payload object
+    U->>M: propose transaction<br/>(paste payload into ABI form)
+    M-->>U: simulate ✓, share link
+    </div>
+  </div>
+
+  <h4>Console payload shapes</h4>
+
+  <p>The payload will be logged in one of two shapes. The fields map to the
+  ABI builder identically — only the field names differ.</p>
+
+  <p><strong>Modern (AIP-62 / Aptos Wallet Standard):</strong></p>
+<pre><code>{
+  "data": {
+    "function": "0xabc...::router::swap_exact_input",
+    "typeArguments": [
+      "0x1::aptos_coin::AptosCoin",
+      "0xabc...::usdc::USDC"
+    ],
+    "functionArguments": ["100000000", "12300000", "0xowner..."]
+  }
+}</code></pre>
+
+  <p><strong>Legacy <code>entry_function_payload</code>:</strong></p>
+<pre><code>{
+  "type": "entry_function_payload",
+  "function": "0xabc...::router::swap_exact_input",
+  "type_arguments": ["0x1::aptos_coin::AptosCoin", "0xabc...::usdc::USDC"],
+  "arguments": ["100000000", "12300000", "0xowner..."]
+}</code></pre>
+
+  <p><strong>How to translate either into the proposal ABI form:</strong></p>
+
+  <table>
+    <tr><th>Form field</th><th>Where it comes from</th></tr>
+    <tr><td>Module address</td><td>Everything before <code>::</code> in <code>function</code> (e.g. <code>0xabc...</code>)</td></tr>
+    <tr><td>Module name</td><td>Middle segment (e.g. <code>router</code>)</td></tr>
+    <tr><td>Function name</td><td>Last segment (e.g. <code>swap_exact_input</code>)</td></tr>
+    <tr><td>Type arguments</td><td><code>typeArguments</code> / <code>type_arguments</code> — one entry per line</td></tr>
+    <tr><td>Function arguments</td><td><code>functionArguments</code> / <code>arguments</code> — in order</td></tr>
+  </table>
+
+  <div class="callout callout-amber">
+    <strong>Right-click → Copy object</strong>
+    Console output may truncate long objects to <code>[Object]</code> or omit
+    inner array contents. Right-click the logged object and choose
+    <em>Copy object</em> (Chrome / Firefox both support this) to get the full
+    structure, not just the visible text.
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<section id="thala">
+  <div class="section-label">Section 6</div>
+  <h2>Worked example: a Thala swap</h2>
+
+  <p>Goal: swap 1 APT for USDC on app.thala.fi.</p>
+
+  <ol>
+    <li>Open Nightly, switch active wallet to the watch-only multisig address.</li>
+    <li>Open <code>app.thala.fi</code> in a new tab, open DevTools → Console.</li>
+    <li>Connect Nightly. Confirm the dApp shows the multisig address connected.</li>
+    <li>Navigate to <strong>Swap</strong>, pick input/output tokens, enter amount.</li>
+    <li>Click <strong>Swap</strong>. The dApp will spin and then either hang or show an error.</li>
+    <li>In Console: expand the <code>console.log</code> payload. Expected shape:
+<pre><code>{
+  "data": {
+    "function": "0x...::stable_pool_scripts::swap_exact_in",
+    "typeArguments": [
+      "0x1::aptos_coin::AptosCoin",
+      "&lt;usdc-coin-type&gt;",
+      "&lt;lp-coin-type&gt;",
+      "..."
+    ],
+    "functionArguments": ["100000000", "&lt;min-out&gt;"]
+  }
+}</code></pre>
+      The exact module name and number of type arguments vary by pool type
+      (stable pool vs weighted pool, two-asset vs multi-asset). Trust whatever
+      the console shows — it is exactly what Thala's frontend produced.
+    </li>
+    <li>Right-click → Copy object. In the multisig dashboard, create a new
+        proposal, pick the ABI builder, fill from the JSON. Set max gas to
+        something generous for swaps (e.g. <code>100000</code>).</li>
+    <li><strong>Simulate.</strong> If success: save &amp; share. If fail:
+        check whether on-chain pool state has moved (slippage in
+        <code>&lt;min-out&gt;</code> may have become unreachable). Re-capture
+        from Thala with a looser slippage. See
+        <a href="#sim">simulation failures</a> to tell temporary failures
+        (oracle, slippage) from permanent ones (wrong args, no funds).</li>
+  </ol>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<section id="pcs">
+  <div class="section-label">Section 7</div>
+  <h2>Worked example: a PancakeSwap swap</h2>
+
+  <p>Goal: swap APT for USDT on <code>aptos.pancakeswap.finance</code>.</p>
+
+  <ol>
+    <li>Same Nightly setup as the Thala example.</li>
+    <li>Open the dApp, open DevTools → Console, connect Nightly.</li>
+    <li>Set up the swap and click <strong>Swap</strong>. The dApp will fail to submit.</li>
+    <li>Console will show something like:
+<pre><code>{
+  "data": {
+    "function": "0xc7efb40...::router::swap_exact_input",
+    "typeArguments": [
+      "0x1::aptos_coin::AptosCoin",
+      "&lt;usdt-coin-type&gt;"
+    ],
+    "functionArguments": ["100000000", "9800000"]
+  }
+}</code></pre>
+      PancakeSwap's router functions are simpler — usually two type arguments
+      (in, out) and two function arguments (amount in, min amount out).
+    </li>
+    <li>Copy → propose → ABI builder → fill → simulate → save → share.</li>
+  </ol>
+
+  <div class="callout callout-rose">
+    <strong>Coin types are case- and version-sensitive</strong>
+    Don't substitute <code>USDC</code> for <code>USDt</code>, or use a coin
+    type from a different bridge. Use the exact string from the console.
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<section id="manual">
+  <div class="section-label">Section 8</div>
+  <h2>Manual fallback: building a payload from scratch</h2>
+
+  <p>If a dApp won't connect to Nightly (rare), reconstruct the call manually.
+  You need three things:</p>
+  <ol>
+    <li>The fully qualified function — <code>0xMODULE::module_name::function_name</code></li>
+    <li>Type arguments — usually coin types like <code>0x1::aptos_coin::AptosCoin</code></li>
+    <li>Function arguments — in correct order &amp; BCS-compatible form
+        (<code>u64</code> as decimal string, <code>address</code> as
+        <code>0x...</code>, <code>bool</code> as <code>true</code>/<code>false</code>,
+        <code>vector&lt;u8&gt;</code> as <code>0xhex</code>)</li>
+  </ol>
+
+  <p>Sources, in order of reliability:</p>
+  <ul>
+    <li><strong>Contract source</strong> — many Aptos protocols publish their
+        Move on GitHub. Search for the function name.</li>
+    <li><strong>Aptos explorer ABI viewer</strong> — paste the module address
+        into <a href="https://explorer.aptoslabs.com">explorer.aptoslabs.com</a>,
+        open <em>Modules</em>, find the function. This gives the signature
+        authoritatively.</li>
+    <li><strong>Past on-chain transactions by other users</strong> — search the
+        function name in the explorer, copy the <em>Payload</em> of a real
+        transaction as a template.</li>
+    <li><strong>Protocol docs / SDKs</strong> — most DEXes publish a JS SDK
+        whose source reveals exact module paths and arg layouts.</li>
+  </ul>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<section id="signing">
+  <div class="section-label">Section 9</div>
+  <h2>Collecting signatures</h2>
+
+  <p>After saving a proposal, you get a share link of the form
+  <code>http://localhost:3123/tx/&lt;proposal-id&gt;</code>. Each co-signer
+  opens that URL, connects their own Ed25519 wallet (the one that holds
+  <em>their</em> owner key), reviews the decoded transaction, and signs.</p>
+
+  <h4>Signers without a browser wallet</h4>
+
+  <p>If an owner only has a raw private key, use the <strong>Offline signing</strong>
+  panel on the proposal page:</p>
+  <ol>
+    <li>Export the unsigned transaction bytes (button <em>Export for offline signing</em>).</li>
+    <li>Sign externally — for example with <code>@aptos-labs/ts-sdk</code> in Node:</li>
+  </ol>
+<pre><code>import { Ed25519PrivateKey, Hex } from "@aptos-labs/ts-sdk";
+
+const priv = new Ed25519PrivateKey("0x&lt;owner_priv_hex&gt;");
+const txnBytes = Hex.fromHexString("0x&lt;exported-bytes-hex&gt;").toUint8Array();
+const signingMsg = /* SHA3-256 of "APTOS::RawTransaction" prefix + txnBytes */;
+const sig = priv.sign(signingMsg);
+console.log(sig.toString());</code></pre>
+
+  <ol start="3">
+    <li>Paste the 64-byte hex signature plus the signer index back into the
+        offline panel. The app verifies your signature against the expected
+        public key before accepting it.</li>
+  </ol>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<section id="sim">
+  <div class="section-label">Section 10</div>
+  <h2>Simulating, retrying, and submitting</h2>
+
+  <p>Always <strong>Simulate</strong> before submitting. The button runs a dry
+  execution against the current chain state and tells you whether the
+  transaction would succeed.</p>
+
+  <h3>Temporary vs permanent simulation failures</h3>
+
+  <p>When simulation fails, decide whether the cause is transient (retry
+  later, same proposal) or permanent (rebuild the proposal).</p>
+
+  <div class="diagram-box-wide">
+    <div class="diagram-title">Simulation failure decision tree</div>
+    <div class="mermaid">
+%%{init: {"flowchart": {"nodeSpacing": 50, "rankSpacing": 70}, "themeVariables": {"fontSize": "14px"}}}%%
+flowchart TD
+    A[Simulation failed] --> B{Error mentions...}
+    B -- oracle / STALE_PRICE --> T1[Temporary:<br/>wait 30-120 s, retry]
+    B -- slippage / min_amount_out --> T2[Temporary-ish:<br/>price moved, must<br/>RE-CAPTURE from dApp]
+    B -- RPC / connection / 5xx --> T3[Temporary:<br/>retry]
+    B -- INSUFFICIENT_BALANCE / EINSUFFICIENT_FUNDS --> P1[Permanent:<br/>top up wallet or<br/>reduce amount]
+    B -- SEQUENCE_NUMBER_TOO_OLD --> P2[Permanent for this proposal:<br/>rebuild — new seq picked up]
+    B -- OUT_OF_GAS / MAX_GAS_AMOUNT_EXCEEDED --> P3[Permanent for this proposal:<br/>rebuild with higher max gas]
+    B -- OBJECT_NOT_FOUND / bad args --> P4[Permanent:<br/>arg or type-arg typo]
+    style T1 fill:#fef3c7,stroke:#f59e0b
+    style T2 fill:#fef3c7,stroke:#f59e0b
+    style T3 fill:#fef3c7,stroke:#f59e0b
+    style P1 fill:#fee2e2,stroke:#ef4444
+    style P2 fill:#fee2e2,stroke:#ef4444
+    style P3 fill:#fee2e2,stroke:#ef4444
+    style P4 fill:#fee2e2,stroke:#ef4444
+    </div>
+  </div>
+
+  <table>
+    <tr>
+      <th>Error pattern</th><th>Likely cause</th><th>Verdict</th>
+    </tr>
+    <tr>
+      <td><code>Move abort in 0x...::oracle::...</code> / <code>STALE_PRICE</code></td>
+      <td>An oracle hasn't refreshed; DEX/CDP needs fresh prices</td>
+      <td><span class="tag-tmp">Temporary</span> wait 30-120 s, simulate again. May need several retries.</td>
+    </tr>
+    <tr>
+      <td><code>INSUFFICIENT_BALANCE</code> / <code>EINSUFFICIENT_FUNDS</code></td>
+      <td>Wallet doesn't have enough of the input token</td>
+      <td><span class="tag-perm">Permanent</span> fix amount or top up the wallet.</td>
+    </tr>
+    <tr>
+      <td><code>SLIPPAGE_EXCEEDED</code> / <code>min_amount_out</code> abort</td>
+      <td>Price moved between capture and simulation</td>
+      <td><span class="tag-tmp">Temporary</span> re-capture from the dApp with current price / looser slippage. The old proposal is unusable.</td>
+    </tr>
+    <tr>
+      <td><code>SEQUENCE_NUMBER_TOO_OLD</code></td>
+      <td>Wallet has sent another transaction since the proposal was built</td>
+      <td><span class="tag-perm">Permanent</span> for this proposal — rebuild, it'll pick up the new seq automatically.</td>
+    </tr>
+    <tr>
+      <td><code>OUT_OF_GAS</code> / <code>MAX_GAS_AMOUNT_EXCEEDED</code></td>
+      <td>Gas budget too low</td>
+      <td><span class="tag-perm">Permanent</span> for this proposal — rebuild with higher <code>maxGasAmount</code> (e.g. 200000).</td>
+    </tr>
+    <tr>
+      <td><code>OBJECT_NOT_FOUND</code> / missing resource</td>
+      <td>Wrong address or coin type</td>
+      <td><span class="tag-perm">Permanent</span> check the captured payload — usually a type argument typo.</td>
+    </tr>
+    <tr>
+      <td><code>Connection refused</code> / RPC 5xx</td>
+      <td>Aptos node temporarily unreachable</td>
+      <td><span class="tag-tmp">Temporary</span> retry.</td>
+    </tr>
+  </table>
+
+  <div class="callout callout-green">
+    <strong>Rule of thumb</strong>
+    <em>Oracle, slippage, RPC, or connection</em> → usually transient.<br>
+    <em>Balance, gas, sequence number, or argument errors</em> → usually
+    permanent, rebuild the proposal.
+  </div>
+
+  <h3>Submitting</h3>
+  <p>Once ≥ threshold signatures are collected and a fresh simulation passes,
+  click <strong>Submit</strong>. The combined
+  <code>TransactionAuthenticatorMultiEd25519</code> goes directly to the
+  Aptos node. The app polls for on-chain confirmation at ~5 s, ~10 s, and
+  ~60 s after submission.</p>
+
+  <p>If the submitted transaction reverts on-chain (passed simulation but real
+  execution failed), the proposal status moves to <em>failed</em>. The most
+  common cause is price-moved-since-simulation; rebuild and retry.</p>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<section id="faq">
+  <div class="section-label">Section 11</div>
+  <h2>Troubleshooting / FAQ</h2>
+
+  <h4>My import says "no on-chain history found".</h4>
+  <p>The wallet has never sent a transaction. Use <em>Manual import</em>
+  instead and provide all public keys + threshold.</p>
+
+  <h4>The derived address doesn't match my wallet address.</h4>
+  <p>Key order is wrong, threshold is wrong, or you're missing a key. Some
+  MultiEd25519 wallets include extra "salt" public keys beyond the
+  human-owned ones — make sure you provide <em>all</em> of them.</p>
+
+  <h4>Nightly doesn't show the payload in the console.</h4>
+  <p>Confirm you're using Nightly in <strong>watch-only</strong> mode (not a
+  regular single-key wallet). Watch-only is what causes the signing flow to
+  log + drop rather than prompt. Make sure the active wallet in Nightly is
+  the multisig address, not a personal address.</p>
+
+  <h4>The dApp loads in the iframe browser but the proposal doesn't appear.</h4>
+  <p>The dApp may call non-standard wallet methods. Open the iframe page's
+  DevTools — the proxy logs unsupported calls. Fall back to Nightly capture.</p>
+
+  <h4>My co-signer's wallet is rejected.</h4>
+  <p>This app blocks keyless / OAuth wallets (Aptos Connect, Google, Apple)
+  because they use non-Ed25519 keys that can't sit in a MultiEd25519 key
+  set. Co-signers must use a standard Ed25519 wallet (Petra, Moveth, Rise,
+  OKX, …) or sign offline with their raw key.</p>
+
+  <h4>Simulation keeps failing with an oracle error even after waiting.</h4>
+  <p>Some pools depend on multiple oracles; one may be stuck. Try waiting
+  longer (5–10 minutes), or use a different pool/path on the dApp.</p>
+
+  <h4>Can I edit a proposal after sharing the link?</h4>
+  <p>No. The signed payload bytes are committed when the proposal is created.
+  Edits require building a new proposal and a new link.</p>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<section id="future">
+  <div class="section-label">Section 12</div>
+  <h2>Future: a dedicated extension</h2>
+
+  <p>The Nightly watch-only console-capture workflow is a workaround. A future
+  improvement is a dedicated browser extension that presents itself to dApps
+  as an Aptos-Wallet-Standard wallet, intercepts
+  <code>signAndSubmitTransaction</code> properly, and submits the captured
+  payload directly to this app as a new proposal — no manual copy/paste.
+  The same approach also works for <code>signMessage</code> and
+  <code>signTransaction</code> flows.</p>
+
+  <p>Until that exists, Nightly + DevTools is the most reliable bridge.</p>
+</section>
+
+</div>
+</main>
+
+<footer>
+  <div class="container">
+    <p>Source &amp; markdown version: see <code>MSAFE_COMPATIBILITY.md</code> in the repo.</p>
+  </div>
+</footer>
+
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'neutral',
+    flowchart: { curve: 'basis', rankSpacing: 60, nodeSpacing: 40 },
+    sequence:  {
+      actorMargin:   110,
+      messageMargin:  50,
+      boxMargin:      12,
+      useMaxWidth:   false,
+      mirrorActors:  true,
+    },
+    themeVariables: {
+      primaryColor:       '#e0e7ff',
+      primaryTextColor:   '#1e293b',
+      primaryBorderColor: '#6366f1',
+      lineColor:          '#94a3b8',
+      secondaryColor:     '#f1f5f9',
+      tertiaryColor:      '#fff',
+      fontFamily:         '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      fontSize:           '14px',
+    }
+  });
+</script>
+</body>
+</html>
