@@ -54,7 +54,7 @@ You will need:
 
 ## Prerequisites
 
-- **Node.js 20+** and **pnpm**
+- **Node.js 24+** and **pnpm**
 - A browser wallet that holds your owner key:
   [Petra](https://petra.app) (desktop), Moveth, Rise, OKX, etc. Any
   standard Ed25519 wallet works.

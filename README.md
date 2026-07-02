@@ -39,7 +39,7 @@ Aptos natively supports **MultiEd25519** authentication at the protocol level â€
 
 ### Prerequisites
 
-- Node.js 20+
+- Node.js 24+
 - [pnpm](https://pnpm.io)
 - [Petra wallet](https://petra.app) browser extension
 
