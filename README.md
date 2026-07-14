@@ -204,6 +204,26 @@ When `BACKEND_URL` is set, Next.js rewrites proxy all `/api/*` requests to the b
 
 With URL-based proposals, the frontend can work entirely without a backend for the core signing flow. The only server-side call is `/api/multisig/build-tx` to serialize the transaction (which only needs an Aptos RPC connection, no database).
 
+### HTTPS (Caddy reverse proxy)
+
+`next start` serves plain HTTP, so production deployments put a reverse proxy in front to terminate TLS. A [Caddy](https://caddyserver.com) config (`Caddyfile`) is included; it fetches and auto-renews a Let's Encrypt certificate for your domain and proxies to the local Next.js server.
+
+Set the domain (and, if you changed it, the port) in `.env.local`:
+
+```env
+DOMAIN=multisig.example.com
+PORT=3000
+```
+
+Then, on the server (requires [Caddy installed](https://caddyserver.com/docs/install)):
+
+```bash
+make caddy       # start or reload Caddy with the config from .env.local
+make caddy-stop  # stop it
+```
+
+`make deploy` runs this automatically as its final step. When `DOMAIN` is unset it's skipped, leaving the app HTTP-only on `PORT` (default 3000) for single-machine or proxy-terminated-elsewhere setups. Binding ports 80/443 requires privileges — the official Caddy package grants Caddy the needed capabilities.
+
 ## Scripts
 
 | Command                   | Description                  |
