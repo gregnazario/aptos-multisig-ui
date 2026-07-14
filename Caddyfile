@@ -1,0 +1,23 @@
+# Caddyfile — reverse proxy with automatic HTTPS for the Aptos Multisig backend.
+#
+# Configuration is driven by environment variables, which the Makefile loads
+# from .env.local. Start/reload it with:
+#
+#   make caddy
+#
+# Environment variables:
+#   DOMAIN  Public domain to serve, e.g. multisig.example.com   (required)
+#   PORT    Local port the Next.js server listens on            (default: 3000)
+#
+# Caddy automatically provisions and renews a TLS certificate from Let's Encrypt
+# for DOMAIN, so no certificate paths are needed here. To receive certificate
+# expiry notices, add a global options block above the site with your email:
+#
+#   {
+#       email you@example.com
+#   }
+
+{$DOMAIN} {
+	encode zstd gzip
+	reverse_proxy localhost:{$PORT:3000}
+}
