@@ -8,6 +8,9 @@ import { AdminBadge } from "@/components/admin-badge";
 import { AdminNavLink } from "@/components/admin-nav-link";
 import { ConnectWalletButton } from "@/components/connect-wallet-button";
 import { NetworkSwitcher } from "@/components/network-switcher";
+import { SiteFooter } from "@/components/site-footer";
+import { ThemeProvider } from "@/components/theme-provider";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { WalletProvider } from "@/components/wallet-provider";
 
 const geistSans = Geist({
@@ -33,30 +36,40 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-background">
-        <WalletProvider>
-          <header className="sticky top-0 z-40 flex items-center justify-between border-b bg-card/80 backdrop-blur-sm px-6 py-3 shadow-sm">
-            <a href="/" className="text-lg font-bold tracking-tight">
-              Aptos Multisig
-            </a>
-            <div className="flex items-center gap-3">
-              <AdminNavLink />
-              <AdminBadge />
-              <Suspense
-                fallback={<div className="w-[130px] h-9 rounded-md border" />}
-              >
-                <NetworkSwitcher />
-              </Suspense>
-              <ConnectWalletButton />
-            </div>
-          </header>
-          <Suspense fallback={null}>
-            <ActiveMultisigBanner />
-          </Suspense>
-          <main className="flex-1 p-6">{children}</main>
-        </WalletProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <WalletProvider>
+            <header className="sticky top-0 z-40 flex items-center justify-between border-b bg-card/80 backdrop-blur-sm px-6 py-3 shadow-sm">
+              <a href="/" className="text-lg font-bold tracking-tight">
+                Aptos Multisig
+              </a>
+              <div className="flex items-center gap-3">
+                <AdminNavLink />
+                <AdminBadge />
+                <Suspense
+                  fallback={<div className="w-[130px] h-9 rounded-md border" />}
+                >
+                  <NetworkSwitcher />
+                </Suspense>
+                <ThemeToggle />
+                <ConnectWalletButton />
+              </div>
+            </header>
+            <Suspense fallback={null}>
+              <ActiveMultisigBanner />
+            </Suspense>
+            <main className="flex-1 p-6">{children}</main>
+            <SiteFooter />
+          </WalletProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
