@@ -34,6 +34,13 @@ interface ProposalBuilderProps {
   network: AptosNetwork;
   threshold: number;
   publicKeys: string[];
+  /** Optional prefills (e.g. from balance Transfer links). */
+  initialModuleAddress?: string;
+  initialModuleName?: string;
+  initialFunctionName?: string;
+  initialTypeArgs?: string[];
+  initialArgs?: string[];
+  initialDescription?: string;
 }
 
 export function ProposalBuilder({
@@ -41,15 +48,27 @@ export function ProposalBuilder({
   network,
   threshold,
   publicKeys,
+  initialModuleAddress,
+  initialModuleName,
+  initialFunctionName,
+  initialTypeArgs,
+  initialArgs,
+  initialDescription,
 }: ProposalBuilderProps) {
   const { connected } = useWallet();
   const adapter = useAdapterWallet();
 
   const [mode, setMode] = useState<StorageMode>("server");
-  const [description, setDescription] = useState("");
-  const [moduleAddress, setModuleAddress] = useState("0x1");
-  const [moduleName, setModuleName] = useState("aptos_account");
-  const [functionName, setFunctionName] = useState("transfer");
+  const [description, setDescription] = useState(initialDescription ?? "");
+  const [moduleAddress, setModuleAddress] = useState(
+    initialModuleAddress ?? "0x1",
+  );
+  const [moduleName, setModuleName] = useState(
+    initialModuleName ?? "aptos_account",
+  );
+  const [functionName, setFunctionName] = useState(
+    initialFunctionName ?? "transfer",
+  );
   const [maxGas, setMaxGas] = useState(100000);
   const [gasPrice, setGasPrice] = useState(100);
   const [expirationHours, setExpirationHours] = useState(24);
@@ -62,8 +81,10 @@ export function ProposalBuilder({
   const [onChainSeq, setOnChainSeq] = useState<number | null>(null);
 
   // ABI-driven form state
-  const [abiTypeArgs, setAbiTypeArgs] = useState<string[]>([]);
-  const [abiArgs, setAbiArgs] = useState<string[]>([]);
+  const [abiTypeArgs, setAbiTypeArgs] = useState<string[]>(
+    initialTypeArgs ?? [],
+  );
+  const [abiArgs, setAbiArgs] = useState<string[]>(initialArgs ?? []);
 
   // Simulation
   const [simulating, setSimulating] = useState(false);
@@ -449,6 +470,8 @@ export function ProposalBuilder({
                   moduleName={moduleName.trim()}
                   functionName={functionName.trim()}
                   onChange={handleAbiChange}
+                  initialTypeArgs={initialTypeArgs}
+                  initialArgs={initialArgs}
                 />
               </div>
 

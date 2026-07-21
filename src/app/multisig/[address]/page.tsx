@@ -1,6 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { AccountBalances } from "@/components/account-balances";
 import { ProposalList } from "@/components/proposal-list";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -71,6 +72,9 @@ export default async function MultisigDashboardPage({
           Open dApp
         </Link>
       </div>
+
+      {/* Balances */}
+      <AccountBalances address={address} network={network} />
 
       {/* Signer list */}
       <Card>
