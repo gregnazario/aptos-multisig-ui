@@ -37,11 +37,14 @@ Aptos natively supports **MultiEd25519** authentication at the protocol level â€
 
 ## Getting Started
 
+**Full VM install (every tool, in order):** see **[INSTALLATION.md](./INSTALLATION.md)** â€” system packages, Node.js 24+, pnpm, dependencies, database, and production (pm2 / Caddy).
+
 ### Prerequisites
 
 - Node.js 24+
 - [pnpm](https://pnpm.io)
 - [Petra wallet](https://petra.app) browser extension
+- On a fresh Linux VM: `build-essential`, `python3`, `git`, and `curl` (see [INSTALLATION.md](./INSTALLATION.md))
 
 ### Setup
 
@@ -60,6 +63,8 @@ pnpm dev
 ```
 
 Open [http://localhost:3123](http://localhost:3123) and connect Petra (set to Devnet for testing).
+
+For production on a VM (`make deploy`, pm2, optional HTTPS), follow [INSTALLATION.md](./INSTALLATION.md).
 
 ### Environment Variables
 
@@ -82,7 +87,6 @@ GAS_STATION_NETWORKS=devnet,testnet
 # BACKEND_URL=https://api.example.com
 # CORS_ORIGIN=https://app.example.com
 ```
-
 ## Usage
 
 ### Create a Multisig
