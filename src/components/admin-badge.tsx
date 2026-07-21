@@ -12,8 +12,8 @@ export function AdminBadge() {
       className="bg-amber-500 text-white hover:bg-amber-500"
       title="This wallet is an admin and can create proposals on any multisig."
     >
-      <ShieldCheck className="mr-1 h-3 w-3" />
-      Admin
+      <ShieldCheck className="h-3 w-3 sm:mr-1" />
+      <span className="hidden sm:inline">Admin</span>
     </Badge>
   );
 }

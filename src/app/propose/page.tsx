@@ -234,7 +234,7 @@ function ProposeContent() {
 
   if (successUrl) {
     return (
-      <div className="w-full py-8 px-4 space-y-6">
+      <div className="mx-auto w-full max-w-2xl space-y-6 py-2 sm:py-4">
         <Card>
           <CardHeader>
             <CardTitle>Proposal Created</CardTitle>
@@ -243,14 +243,15 @@ function ProposeContent() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row">
               <Input
                 value={successUrl}
                 readOnly
-                className="font-mono text-xs"
+                className="min-w-0 flex-1 font-mono text-xs"
               />
               <Button
                 variant="outline"
+                className="w-full shrink-0 sm:w-auto"
                 onClick={() => {
                   navigator.clipboard.writeText(successUrl).catch(console.info);
                   setCopied(true);
@@ -260,8 +261,9 @@ function ProposeContent() {
                 {copied ? "Copied!" : "Copy"}
               </Button>
             </div>
-            <div className="flex gap-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
               <Button
+                className="w-full sm:w-auto"
                 onClick={() =>
                   (window.location.href = successUrl.replace(
                     window.location.origin,
@@ -271,7 +273,11 @@ function ProposeContent() {
               >
                 Open Proposal
               </Button>
-              <Button variant="outline" onClick={() => setSuccessUrl(null)}>
+              <Button
+                variant="outline"
+                className="w-full sm:w-auto"
+                onClick={() => setSuccessUrl(null)}
+              >
                 Create Another
               </Button>
             </div>
@@ -282,9 +288,9 @@ function ProposeContent() {
   }
 
   return (
-    <div className="w-full py-8 px-4 space-y-6">
+    <div className="mx-auto w-full max-w-2xl space-y-6 py-2 sm:py-4">
       <div className="space-y-2">
-        <h1 className="text-2xl font-bold tracking-tight">
+        <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
           Propose Transaction
         </h1>
         <p className="text-muted-foreground">
@@ -303,18 +309,18 @@ function ProposeContent() {
           <CardContent className="space-y-3 text-sm">
             <div>
               <span className="font-medium">Function: </span>
-              <code className="text-xs">{fullFunction}</code>
+              <code className="break-all text-xs">{fullFunction}</code>
             </div>
             {typeArgs && (
               <div>
                 <span className="font-medium">Type Arguments: </span>
-                <code className="text-xs">{typeArgs}</code>
+                <code className="break-all text-xs">{typeArgs}</code>
               </div>
             )}
             {args && (
               <div>
                 <span className="font-medium">Arguments: </span>
-                <code className="text-xs">{args}</code>
+                <code className="break-all text-xs">{args}</code>
               </div>
             )}
             {desc && (
@@ -323,7 +329,7 @@ function ProposeContent() {
                 {desc}
               </div>
             )}
-            <div className="flex gap-4 text-xs text-muted-foreground">
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
               <span>Max Gas: {maxGas}</span>
               <span>Gas Price: {gasPrice}</span>
               <span>Expires: {expHours}h</span>
@@ -378,16 +384,16 @@ function ProposeContent() {
                     : "border-border hover:border-primary/50"
                 }`}
               >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium text-sm">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">
                       {ms.label ?? "Multisig"}
                     </p>
-                    <p className="text-xs font-mono text-muted-foreground">
+                    <p className="font-mono text-xs text-muted-foreground">
                       {ms.address.slice(0, 10)}...{ms.address.slice(-8)}
                     </p>
                   </div>
-                  <Badge variant="secondary">
+                  <Badge variant="secondary" className="shrink-0">
                     {ms.threshold}-of-{ms.publicKeys.length}
                   </Badge>
                 </div>
@@ -415,7 +421,7 @@ function ProposeContent() {
       {selectedMultisig && hasPayload && (
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <CardTitle className="text-base">Simulation</CardTitle>
               {simulating && <Badge variant="secondary">Simulating...</Badge>}
               {simulation && (
@@ -472,10 +478,10 @@ function ProposeContent() {
                     <div className="max-h-48 overflow-y-auto rounded-md border bg-muted/50 p-2 space-y-2">
                       {simulation.events.map((event, i) => (
                         <div key={i} className="text-xs">
-                          <code className="text-primary font-medium">
+                          <code className="break-all font-medium text-primary">
                             {event.type}
                           </code>
-                          <pre className="mt-1 text-muted-foreground overflow-x-auto">
+                          <pre className="mt-1 overflow-x-auto text-muted-foreground">
                             {JSON.stringify(event.data, null, 2)}
                           </pre>
                         </div>
@@ -489,14 +495,14 @@ function ProposeContent() {
                     <p className="text-sm font-medium">
                       State Changes ({simulation.changes.length})
                     </p>
-                    <div className="max-h-36 overflow-y-auto rounded-md border bg-muted/50 p-2 space-y-1">
+                    <div className="max-h-36 space-y-1 overflow-y-auto rounded-md border bg-muted/50 p-2">
                       {simulation.changes.map((change, i) => (
                         <div key={i} className="text-xs">
-                          <Badge variant="outline" className="text-[10px] mr-1">
+                          <Badge variant="outline" className="mr-1 text-[10px]">
                             {change.type}
                           </Badge>
                           {change.resource && (
-                            <code className="text-muted-foreground">
+                            <code className="break-all text-muted-foreground">
                               {change.resource}
                             </code>
                           )}

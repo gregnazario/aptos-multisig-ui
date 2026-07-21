@@ -138,8 +138,8 @@ export function ActiveMultisigBanner() {
   }
 
   return (
-    <div className="border-b bg-muted/40 px-6 py-2 text-sm">
-      <div className="flex items-center gap-2 flex-wrap">
+    <div className="border-b bg-muted/40 px-4 py-2 text-sm sm:px-6">
+      <div className="flex flex-wrap items-center gap-2">
         <span className="text-muted-foreground">Multisig:</span>
         {active.label && (
           <Link

@@ -292,11 +292,19 @@ export function AdminMultisigCreator() {
         </Alert>
       )}
 
-      <div className="flex gap-3">
-        <Button variant="outline" onClick={() => setStep("configure")}>
+      <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
+        <Button
+          variant="outline"
+          onClick={() => setStep("configure")}
+          className="w-full sm:w-auto"
+        >
           Back
         </Button>
-        <Button onClick={createMultisig} disabled={submitting}>
+        <Button
+          onClick={createMultisig}
+          disabled={submitting}
+          className="w-full sm:w-auto"
+        >
           {submitting ? "Creating..." : "Create Multisig"}
         </Button>
       </div>
@@ -324,12 +332,12 @@ function SignerRow({
   return (
     <div className="space-y-2 rounded-md border p-3">
       <Label>Signer #{index + 1}</Label>
-      <div className="flex gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row">
         <Input
           placeholder="0x... (64 hex chars)"
           value={slot.address}
           onChange={(e) => onAddressChange(e.target.value)}
-          className={`font-mono text-xs ${
+          className={`min-w-0 flex-1 font-mono text-xs ${
             slot.address && !addrValid ? "border-red-500" : ""
           }`}
         />
@@ -337,6 +345,7 @@ function SignerRow({
           variant="outline"
           size="sm"
           onClick={onResolve}
+          className="w-full shrink-0 sm:w-auto"
           disabled={!addrValid || slot.status.kind === "resolving"}
         >
           {slot.status.kind === "resolving" ? "Resolving..." : "Resolve"}

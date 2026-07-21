@@ -66,8 +66,10 @@ export function SimulationResult({
           <div className="max-h-48 overflow-y-auto rounded-md border bg-muted/50 p-2 space-y-2">
             {simulation.events.map((event, i) => (
               <div key={i} className="text-xs">
-                <code className="text-primary font-medium">{event.type}</code>
-                <pre className="mt-1 text-muted-foreground overflow-x-auto">
+                <code className="break-all text-xs text-primary font-medium">
+                  {event.type}
+                </code>
+                <pre className="mt-1 overflow-x-auto text-muted-foreground">
                   {JSON.stringify(event.data, null, 2)}
                 </pre>
               </div>
@@ -81,14 +83,14 @@ export function SimulationResult({
           <p className={`font-medium ${textSize}`}>
             State Changes ({simulation.changes.length})
           </p>
-          <div className="max-h-36 overflow-y-auto rounded-md border bg-muted/50 p-2 space-y-1">
+          <div className="max-h-36 space-y-1 overflow-y-auto rounded-md border bg-muted/50 p-2">
             {simulation.changes.map((change, i) => (
               <div key={i} className="text-xs">
-                <Badge variant="outline" className="text-[10px] mr-1">
+                <Badge variant="outline" className="mr-1 text-[10px]">
                   {change.type}
                 </Badge>
                 {change.resource && (
-                  <code className="text-muted-foreground">
+                  <code className="break-all text-muted-foreground">
                     {change.resource}
                   </code>
                 )}

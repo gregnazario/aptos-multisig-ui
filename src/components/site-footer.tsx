@@ -14,7 +14,7 @@ function GithubIcon(props: React.SVGProps<SVGSVGElement>) {
 
 export function SiteFooter() {
   return (
-    <footer className="border-t bg-card/50 px-6 py-4">
+    <footer className="border-t bg-card/50 px-4 py-4 sm:px-6">
       <div className="flex flex-col items-center justify-between gap-3 text-sm text-muted-foreground sm:flex-row">
         <span>Aptos Multisig</span>
         <nav className="flex items-center gap-5">

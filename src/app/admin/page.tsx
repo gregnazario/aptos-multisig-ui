@@ -100,7 +100,7 @@ export default function AdminPage() {
 
   return (
     <Shell>
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">
           All multisigs on <span className="font-medium">{network}</span>
         </p>
@@ -118,7 +118,7 @@ export default function AdminPage() {
               Loading all multisigs requires signing a one-time verification
               message to prove admin access.
             </p>
-            <Button onClick={load}>
+            <Button onClick={load} className="w-full sm:w-auto">
               <ShieldCheck className="mr-1 h-4 w-4" />
               Authenticate &amp; load multisigs
             </Button>
@@ -132,9 +132,14 @@ export default function AdminPage() {
 
       {state.kind === "error" && (
         <Alert variant="destructive">
-          <AlertDescription className="flex items-center justify-between gap-3">
-            <span>{state.message}</span>
-            <Button variant="outline" size="sm" onClick={load}>
+          <AlertDescription className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <span className="min-w-0 break-words">{state.message}</span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={load}
+              className="w-full shrink-0 sm:w-auto"
+            >
               Try again
             </Button>
           </AlertDescription>
@@ -155,7 +160,7 @@ export default function AdminPage() {
 function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="mx-auto w-full max-w-3xl space-y-6">
-      <h1 className="text-2xl font-bold tracking-tight">Admin</h1>
+      <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Admin</h1>
       {children}
     </div>
   );
@@ -215,9 +220,11 @@ function MultisigCard({ ms }: { ms: AdminMultisig }) {
   return (
     <Card>
       <CardHeader className="pb-2">
-        <div className="flex items-center justify-between gap-2">
-          <CardTitle className="text-sm">{ms.label ?? "Multisig"}</CardTitle>
-          <div className="flex gap-1">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <CardTitle className="min-w-0 flex-1 text-sm break-words">
+            {ms.label ?? "Multisig"}
+          </CardTitle>
+          <div className="flex shrink-0 flex-wrap gap-1">
             <Badge variant="secondary">
               {ms.threshold}-of-{ms.signerCount}
             </Badge>
@@ -268,7 +275,7 @@ function MultisigCard({ ms }: { ms: AdminMultisig }) {
 
         <Link
           href={`/multisig/${ms.address}?network=${ms.network}`}
-          className={cn(buttonVariants({ size: "sm" }))}
+          className={cn(buttonVariants({ size: "sm" }), "w-full sm:w-auto")}
         >
           Open Dashboard
         </Link>

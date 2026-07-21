@@ -40,16 +40,16 @@ export default async function MultisigDashboardPage({
   const publicKeys: string[] = JSON.parse(multisig.publicKeys);
 
   return (
-    <div className="max-w-3xl mx-auto w-full space-y-6 px-4 py-8">
+    <div className="mx-auto w-full max-w-3xl space-y-6 py-2 sm:py-4">
       {/* Header */}
       <div className="space-y-2">
-        <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-bold tracking-tight">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
             {multisig.label ?? "Multisig"}
           </h1>
           <Badge variant="outline">{network}</Badge>
         </div>
-        <p className="text-sm text-muted-foreground font-mono break-all">
+        <p className="break-all font-mono text-sm text-muted-foreground">
           {multisig.address}
         </p>
         <p className="text-sm text-muted-foreground">
@@ -58,16 +58,22 @@ export default async function MultisigDashboardPage({
       </div>
 
       {/* Action buttons */}
-      <div className="flex gap-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
         <Link
           href={`/multisig/${address}/propose?network=${network}`}
-          className={cn(buttonVariants({ variant: "default" }))}
+          className={cn(
+            buttonVariants({ variant: "default" }),
+            "w-full sm:w-auto",
+          )}
         >
           New Proposal
         </Link>
         <Link
           href={`/multisig/${address}/dapp?network=${network}`}
-          className={cn(buttonVariants({ variant: "outline" }))}
+          className={cn(
+            buttonVariants({ variant: "outline" }),
+            "w-full sm:w-auto",
+          )}
         >
           Open dApp
         </Link>

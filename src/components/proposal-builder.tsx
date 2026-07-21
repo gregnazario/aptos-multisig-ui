@@ -335,13 +335,17 @@ export function ProposalBuilder({
 
           <div className="space-y-2">
             <Label>Shareable Link</Label>
-            <div className="flex gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row">
               <Input
                 value={successUrl}
                 readOnly
-                className="font-mono text-xs"
+                className="min-w-0 flex-1 font-mono text-xs"
               />
-              <Button variant="outline" onClick={copyToClipboard}>
+              <Button
+                variant="outline"
+                onClick={copyToClipboard}
+                className="w-full shrink-0 sm:w-auto"
+              >
                 {copied ? "Copied!" : "Copy"}
               </Button>
             </div>
@@ -351,12 +355,16 @@ export function ProposalBuilder({
             {threshold}-of-{publicKeys.length} signatures required.
           </p>
 
-          <div className="flex gap-3">
-            <Button onClick={() => (window.location.href = txPath)}>
+          <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
+            <Button
+              className="w-full sm:w-auto"
+              onClick={() => (window.location.href = txPath)}
+            >
               Open Proposal
             </Button>
             <Button
               variant="outline"
+              className="w-full sm:w-auto"
               onClick={() => {
                 setSuccessUrl(null);
                 setDescription("");
@@ -388,9 +396,9 @@ export function ProposalBuilder({
           {connected && (
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Storage mode */}
-              <div className="flex items-center gap-3 rounded-md border p-3">
-                <Label className="text-sm font-medium shrink-0">Storage:</Label>
-                <div className="flex gap-2">
+              <div className="flex flex-col gap-3 rounded-md border p-3 sm:flex-row sm:flex-wrap sm:items-center">
+                <Label className="shrink-0 text-sm font-medium">Storage:</Label>
+                <div className="flex flex-wrap gap-2">
                   <Button
                     type="button"
                     variant={mode === "url" ? "default" : "outline"}
@@ -408,7 +416,7 @@ export function ProposalBuilder({
                     Server
                   </Button>
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground sm:ml-auto">
                   {mode === "url"
                     ? "All data in the link."
                     : "Stored on server."}
@@ -528,7 +536,7 @@ export function ProposalBuilder({
                 </div>
 
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                     <Label htmlFor="sequenceOverride">
                       Sequence Number{" "}
                       <span className="text-muted-foreground">
@@ -585,7 +593,7 @@ export function ProposalBuilder({
               )}
 
               {/* Actions */}
-              <div className="flex gap-3">
+              <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
                 <Button type="submit" disabled={loading} className="flex-1">
                   {loading ? "Creating Proposal..." : "Create Proposal"}
                 </Button>
@@ -599,6 +607,7 @@ export function ProposalBuilder({
                     !moduleName.trim() ||
                     !functionName.trim()
                   }
+                  className="w-full sm:w-auto"
                 >
                   {simulating ? "Simulating..." : "Simulate"}
                 </Button>
@@ -612,7 +621,7 @@ export function ProposalBuilder({
       {(simulation || simError || simulating) && (
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <CardTitle className="text-base">Simulation</CardTitle>
               {simulating && <Badge variant="secondary">Simulating...</Badge>}
               {simulation && <SimulationStatusBadge simulation={simulation} />}

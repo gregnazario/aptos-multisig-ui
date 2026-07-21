@@ -259,7 +259,7 @@ function StandardCreatorBody() {
                 if (threshold > n) setThreshold(n);
               }}
             >
-              <SelectTrigger>
+              <SelectTrigger className="w-full">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -278,7 +278,7 @@ function StandardCreatorBody() {
               value={threshold}
               onValueChange={(val) => setThreshold(Number(val))}
             >
-              <SelectTrigger>
+              <SelectTrigger className="w-full">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -347,11 +347,19 @@ function StandardCreatorBody() {
             </Alert>
           )}
 
-          <div className="flex gap-4">
-            <Button variant="outline" onClick={() => setStep("configure")}>
+          <div className="flex flex-col gap-2 sm:flex-row sm:gap-4">
+            <Button
+              variant="outline"
+              className="w-full sm:w-auto"
+              onClick={() => setStep("configure")}
+            >
               Back
             </Button>
-            <Button onClick={createSetup} disabled={loading}>
+            <Button
+              onClick={createSetup}
+              disabled={loading}
+              className="w-full sm:w-auto"
+            >
               {loading ? "Creating..." : "Create Setup"}
             </Button>
           </div>
@@ -376,7 +384,11 @@ function StandardCreatorBody() {
               <p className="text-sm">
                 Sign to verify your identity as a signer.
               </p>
-              <Button onClick={verifyCreator} disabled={loading}>
+              <Button
+                onClick={verifyCreator}
+                disabled={loading}
+                className="w-full sm:w-auto"
+              >
                 {loading ? "Signing..." : "Sign to Verify"}
               </Button>
             </div>
@@ -387,13 +399,18 @@ function StandardCreatorBody() {
               {/* Shareable link */}
               <div className="space-y-2">
                 <Label>Share this link with other signers</Label>
-                <div className="flex gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row">
                   <Input
                     value={`${typeof window !== "undefined" ? window.location.origin : ""}/multisig/setup/${setupData.id}`}
                     readOnly
-                    className="font-mono text-xs"
+                    className="min-w-0 flex-1 font-mono text-xs"
                   />
-                  <Button variant="outline" size="sm" onClick={copyLink}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={copyLink}
+                    className="w-full shrink-0 sm:w-auto"
+                  >
                     {copied ? "Copied!" : <Copy className="h-4 w-4" />}
                   </Button>
                 </div>
@@ -401,7 +418,7 @@ function StandardCreatorBody() {
 
               {/* Verification status */}
               <div className="space-y-3">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <Label>Signer Verification Status</Label>
                   <Button variant="outline" size="sm" onClick={refreshStatus}>
                     Refresh
@@ -414,11 +431,11 @@ function StandardCreatorBody() {
                   return (
                     <div
                       key={addr}
-                      className="flex items-center justify-between rounded-md border p-3"
+                      className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-3"
                     >
                       <div className="min-w-0 flex-1">
                         <p className="text-xs font-medium">Signer #{i}</p>
-                        <p className="truncate font-mono text-xs text-muted-foreground">
+                        <p className="break-all font-mono text-xs text-muted-foreground sm:truncate">
                           {addr}
                         </p>
                       </div>

@@ -8,7 +8,7 @@ export default async function SetupVerificationPage({
   const { id } = await params;
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="mx-auto w-full max-w-2xl">
       <SetupVerifier setupId={id} />
     </div>
   );
