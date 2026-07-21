@@ -56,7 +56,7 @@ export default async function ProposePage({ params, searchParams }: Props) {
     : undefined;
 
   return (
-    <div className="max-w-2xl mx-auto w-full px-4 py-8">
+    <div className="mx-auto w-full max-w-2xl space-y-4 py-2 sm:py-4">
       <ProposalBuilder
         multisigAddress={multisig.address}
         network={network}

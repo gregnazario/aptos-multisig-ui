@@ -55,7 +55,7 @@ export function NetworkSwitcher() {
       value={network}
       onValueChange={(v) => handleChange(v as AptosNetwork)}
     >
-      <SelectTrigger className="w-[130px]">
+      <SelectTrigger className="h-8 w-[7.5rem] text-xs sm:h-9 sm:w-[130px] sm:text-sm">
         <SelectValue />
       </SelectTrigger>
       <SelectContent>

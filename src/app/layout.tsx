@@ -39,7 +39,7 @@ export default function RootLayout({
       suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-background">
+      <body className="flex min-h-full flex-col overflow-x-clip bg-background">
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
@@ -47,26 +47,33 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <WalletProvider>
-            <header className="sticky top-0 z-40 flex items-center justify-between border-b bg-card/80 backdrop-blur-sm px-6 py-3 shadow-sm">
-              <a href="/" className="text-lg font-bold tracking-tight">
-                Aptos Multisig
-              </a>
-              <div className="flex items-center gap-3">
-                <AdminNavLink />
-                <AdminBadge />
-                <Suspense
-                  fallback={<div className="w-[130px] h-9 rounded-md border" />}
+            <header className="sticky top-0 z-40 border-b bg-card/80 backdrop-blur-sm px-4 py-3 shadow-sm sm:px-6">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <a
+                  href="/"
+                  className="shrink-0 text-base font-bold tracking-tight sm:text-lg"
                 >
-                  <NetworkSwitcher />
-                </Suspense>
-                <ThemeToggle />
-                <ConnectWalletButton />
+                  Aptos Multisig
+                </a>
+                <div className="flex min-w-0 flex-wrap items-center justify-end gap-1.5 sm:gap-3">
+                  <AdminNavLink />
+                  <AdminBadge />
+                  <Suspense
+                    fallback={
+                      <div className="h-9 w-[7.5rem] rounded-md border sm:w-[130px]" />
+                    }
+                  >
+                    <NetworkSwitcher />
+                  </Suspense>
+                  <ThemeToggle />
+                  <ConnectWalletButton />
+                </div>
               </div>
             </header>
             <Suspense fallback={null}>
               <ActiveMultisigBanner />
             </Suspense>
-            <main className="flex-1 p-6">{children}</main>
+            <main className="min-w-0 flex-1 p-4 sm:p-6">{children}</main>
             <SiteFooter />
           </WalletProvider>
         </ThemeProvider>

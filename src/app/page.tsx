@@ -7,9 +7,11 @@ import { cn } from "@/lib/utils";
 export default function Home() {
   return (
     <div className="flex flex-col flex-1 items-center justify-center min-h-[60vh]">
-      <div className="max-w-2xl w-full space-y-8 px-4">
-        <div className="text-center space-y-2">
-          <h1 className="text-3xl font-bold tracking-tight">Aptos Multisig</h1>
+      <div className="w-full max-w-2xl space-y-6 py-2 sm:py-4">
+        <div className="space-y-2 text-center">
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+            Aptos Multisig
+          </h1>
           <p className="text-muted-foreground">
             Create and manage multi-signature wallets on Aptos. Require multiple
             approvals before executing transactions for enhanced security.

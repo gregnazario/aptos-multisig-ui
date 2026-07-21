@@ -99,16 +99,16 @@ export function AccountBalances({ address, network }: AccountBalancesProps) {
               return (
                 <div
                   key={`${b.kind}-${b.asset}`}
-                  className="flex items-center justify-between gap-3 px-3 py-2.5"
+                  className="flex flex-col gap-2 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
                 >
                   <div className="min-w-0 space-y-0.5">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="font-medium text-sm truncate">
+                    <div className="flex min-w-0 flex-wrap items-center gap-2">
+                      <span className="truncate text-sm font-medium">
                         {label}
                       </span>
                       <Badge
                         variant="outline"
-                        className="text-[10px] shrink-0"
+                        className="shrink-0 text-[10px]"
                         title={b.kind === "fa" ? "Fungible Asset" : "Coin"}
                       >
                         {b.kind === "fa" ? "FA" : "Coin"}
@@ -116,20 +116,20 @@ export function AccountBalances({ address, network }: AccountBalancesProps) {
                       {b.isFrozen && (
                         <Badge
                           variant="secondary"
-                          className="text-[10px] shrink-0"
+                          className="shrink-0 text-[10px]"
                         >
                           frozen
                         </Badge>
                       )}
                     </div>
                     <code
-                      className="block text-[10px] text-muted-foreground font-mono truncate"
+                      className="block truncate font-mono text-[10px] text-muted-foreground"
                       title={b.name ? `${b.name} — ${b.asset}` : b.asset}
                     >
                       {b.asset}
                     </code>
                   </div>
-                  <div className="flex items-center gap-3 shrink-0">
+                  <div className="flex items-center justify-between gap-3 sm:shrink-0 sm:justify-end">
                     <span className="font-mono text-sm tabular-nums">
                       {display}
                     </span>

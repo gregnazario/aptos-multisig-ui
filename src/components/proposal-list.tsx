@@ -136,11 +136,11 @@ export function ProposalList({
       <Link key={proposal.id} href={`/tx/${proposal.id}`} className="block">
         <Card className="hover:border-primary/50 transition-colors">
           <CardHeader className="pb-2">
-            <div className="flex items-center justify-between gap-2">
-              <CardTitle className="text-base">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+              <CardTitle className="min-w-0 flex-1 text-base break-words">
                 {proposal.description}
               </CardTitle>
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex shrink-0 flex-wrap items-center gap-2">
                 <ProposalStatusBadge
                   status={proposal.status}
                   expirationTimestampSecs={proposal.expirationTimestampSecs}
@@ -158,7 +158,7 @@ export function ProposalList({
             </div>
           </CardHeader>
           <CardContent className="space-y-3">
-            <code className="text-xs text-muted-foreground">
+            <code className="block break-all text-xs text-muted-foreground">
               {entryFunction}
             </code>
             <SignerStatusGrid
@@ -175,10 +175,10 @@ export function ProposalList({
   return (
     <div className="space-y-6">
       <section className="space-y-3">
-        <div className="flex items-baseline justify-between">
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
           <h3 className="text-sm font-semibold">
             Active{" "}
-            <span className="text-muted-foreground font-normal">
+            <span className="font-normal text-muted-foreground">
               ({active.length})
             </span>
           </h3>
@@ -199,7 +199,7 @@ export function ProposalList({
 
       {inactive.length > 0 && (
         <section className="space-y-3">
-          <div className="flex items-baseline justify-between">
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
             <h3 className="text-sm font-semibold text-muted-foreground">
               History <span className="font-normal">({inactive.length})</span>
             </h3>

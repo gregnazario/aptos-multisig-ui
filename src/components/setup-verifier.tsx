@@ -182,14 +182,14 @@ export function SetupVerifier({ setupId }: { setupId: string }) {
             return (
               <div
                 key={addr}
-                className={`flex items-center justify-between rounded-md border p-3 ${isCurrentUser ? "border-blue-500 bg-blue-50 dark:bg-blue-950/20" : ""}`}
+                className={`flex flex-wrap items-center justify-between gap-2 rounded-md border p-3 ${isCurrentUser ? "border-blue-500 bg-blue-50 dark:bg-blue-950/20" : ""}`}
               >
                 <div className="min-w-0 flex-1">
                   <p className="text-xs font-medium">
                     Signer #{i}
                     {isCurrentUser ? " (you)" : ""}
                   </p>
-                  <p className="truncate font-mono text-xs text-muted-foreground">
+                  <p className="break-all font-mono text-xs text-muted-foreground sm:truncate">
                     {addr}
                   </p>
                 </div>
@@ -226,7 +226,11 @@ export function SetupVerifier({ setupId }: { setupId: string }) {
               Your wallet matches a signer in this setup. Sign a message to
               verify your identity.
             </p>
-            <Button onClick={verify} disabled={verifying}>
+            <Button
+              onClick={verify}
+              disabled={verifying}
+              className="w-full sm:w-auto"
+            >
               {verifying ? "Signing..." : "Sign to Verify"}
             </Button>
           </div>

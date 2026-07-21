@@ -72,11 +72,11 @@ export function MyMultisigs() {
       {data?.multisigs.map((ms) => (
         <Card key={ms.id}>
           <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm">
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <CardTitle className="min-w-0 flex-1 text-sm break-words">
                 {ms.label ?? "Multisig"}
               </CardTitle>
-              <div className="flex gap-1">
+              <div className="flex shrink-0 flex-wrap gap-1">
                 <Badge variant="secondary">
                   {ms.threshold}-of-{ms.publicKeys.length}
                 </Badge>
@@ -90,6 +90,7 @@ export function MyMultisigs() {
             </p>
             <Button
               size="sm"
+              className="w-full sm:w-auto"
               onClick={() =>
                 (window.location.href = `/multisig/${ms.address}?network=${ms.network}`)
               }
@@ -108,11 +109,11 @@ export function MyMultisigs() {
           {data?.pendingSetups.map((s) => (
             <Card key={s.id} className="border-dashed">
               <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <CardTitle className="min-w-0 flex-1 text-sm break-words">
                     {s.label ?? "Pending Setup"}
                   </CardTitle>
-                  <div className="flex gap-1">
+                  <div className="flex shrink-0 flex-wrap gap-1">
                     <Badge variant="secondary">
                       {s.threshold}-of-{s.totalSigners}
                     </Badge>
@@ -127,6 +128,7 @@ export function MyMultisigs() {
                 <Button
                   size="sm"
                   variant="outline"
+                  className="w-full sm:w-auto"
                   onClick={() =>
                     (window.location.href = `/multisig/setup/${s.id}`)
                   }

@@ -224,14 +224,14 @@ export function DappProxy({
   }
 
   return (
-    <div className="fixed inset-0 flex flex-col">
+    <div className="flex min-h-0 flex-1 flex-col">
       {/* Top bar */}
-      <div className="flex items-center gap-2 border-b bg-background px-3 py-2 shrink-0">
+      <div className="flex shrink-0 items-center gap-2 border-b bg-background px-3 py-2">
         <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
           <SheetTrigger render={<Button variant="outline" size="sm" />}>
             Settings
           </SheetTrigger>
-          <SheetContent side="left" className="w-80 sm:max-w-sm">
+          <SheetContent side="left" className="w-[min(100%,20rem)] sm:max-w-sm">
             <SheetHeader>
               <SheetTitle>dApp Browser</SheetTitle>
               <SheetDescription>
@@ -297,14 +297,14 @@ export function DappProxy({
         </Sheet>
 
         {loadedUrl && (
-          <span className="text-xs text-muted-foreground truncate">
+          <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
             {loadedUrl}
           </span>
         )}
 
         {loading && (
-          <span className="text-xs text-muted-foreground ml-auto">
-            Creating proposal...
+          <span className="ml-auto shrink-0 text-xs text-muted-foreground">
+            Creating…
           </span>
         )}
       </div>
@@ -314,11 +314,11 @@ export function DappProxy({
         <iframe
           ref={iframeRef}
           src={`/api/dapp-proxy/?origin=${encodeURIComponent(loadedUrl)}`}
-          className="flex-1 w-full border-0"
+          className="min-h-0 w-full flex-1 border-0"
           title="dApp Browser"
         />
       ) : (
-        <div className="flex-1 flex items-center justify-center text-muted-foreground">
+        <div className="flex flex-1 items-center justify-center px-4 text-center text-muted-foreground">
           <p>Open the settings panel to load a dApp.</p>
         </div>
       )}

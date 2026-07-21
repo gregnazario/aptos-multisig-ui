@@ -26,7 +26,7 @@ export default async function DappProxyPage({ params, searchParams }: Props) {
   const publicKeys: string[] = JSON.parse(multisig.publicKeys);
 
   return (
-    <div className="max-w-4xl mx-auto w-full px-4 py-8">
+    <div className="-mx-4 -mt-4 flex min-h-[calc(100dvh-8rem)] flex-col sm:-mx-6 sm:-mt-6">
       <DappProxy
         multisigAddress={multisig.address}
         network={network}

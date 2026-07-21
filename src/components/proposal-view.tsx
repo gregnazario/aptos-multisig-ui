@@ -515,13 +515,13 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
   ).toLocaleString();
 
   return (
-    <div className="w-full space-y-6 p-4">
+    <div className="mx-auto w-full max-w-3xl space-y-6 py-2 sm:py-4">
       {/* Header card */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="text-lg">Proposal</CardTitle>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               {getSourceBadge(proposal.source)}
               <ProposalStatusBadge
                 status={proposal.status}
@@ -529,14 +529,16 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
               />
             </div>
           </div>
-          <CardDescription>{proposal.description}</CardDescription>
+          <CardDescription className="break-words">
+            {proposal.description}
+          </CardDescription>
         </CardHeader>
       </Card>
 
       {/* Proposed by */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <CardTitle className="text-base">Proposed By</CardTitle>
             {getCreatorRoleBadge(proposal.creatorRole)}
           </div>
@@ -548,7 +550,7 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
                 href={`https://explorer.aptoslabs.com/account/${proposal.creatorAddress}?network=${proposal.multisig.network}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs font-mono text-blue-600 hover:underline break-all"
+                className="break-all font-mono text-xs text-blue-600 hover:underline"
                 title={
                   proposal.creatorPublicKey
                     ? `Public key: ${proposal.creatorPublicKey}`
@@ -565,7 +567,7 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
           )}
 
           {proposal.creatorPublicKey && proposal.creatorSignature && (
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <Button
                 variant="outline"
                 size="sm"
@@ -575,16 +577,16 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
                 {verifyingProof ? "Verifying..." : "Verify proof"}
               </Button>
               {proofVerification === "valid" && (
-                <span className="text-green-600 text-xs">✓ Proof is valid</span>
+                <span className="text-xs text-green-600">✓ Proof is valid</span>
               )}
               {proofVerification === "invalid" && (
-                <span className="text-red-600 text-xs">
+                <span className="text-xs text-red-600">
                   ✗ Proof did not verify
                 </span>
               )}
               {proposal.creatorPublicKey && (
                 <code
-                  className="text-[10px] text-muted-foreground"
+                  className="break-all text-[10px] text-muted-foreground"
                   title={proposal.creatorPublicKey}
                 >
                   pk {shortHex(proposal.creatorPublicKey)}
@@ -614,20 +616,24 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
           </div>
           <div>
             <span className="font-medium">Function: </span>
-            <code className="text-xs">
+            <code className="break-all text-xs">
               {payload.module}::{payload.function}
             </code>
           </div>
           {payload.typeArgs.length > 0 && (
             <div>
               <span className="font-medium">Type Arguments: </span>
-              <code className="text-xs">{payload.typeArgs.join(", ")}</code>
+              <code className="break-all text-xs">
+                {payload.typeArgs.join(", ")}
+              </code>
             </div>
           )}
           {payload.args.length > 0 && (
             <div>
               <span className="font-medium">Arguments: </span>
-              <code className="text-xs">{payload.args.join(", ")}</code>
+              <code className="break-all text-xs">
+                {payload.args.join(", ")}
+              </code>
             </div>
           )}
           <div>
@@ -726,9 +732,9 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
       {/* Simulation */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="text-base">Simulation</CardTitle>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {simulation && <SimulationStatusBadge simulation={simulation} />}
               <Button
                 variant="outline"
@@ -805,14 +811,19 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
               <p className="text-sm text-destructive">{actionError}</p>
             )}
 
-            <div className="flex gap-3">
-              <Button onClick={handleSign} disabled={signing || declining}>
+            <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
+              <Button
+                onClick={handleSign}
+                disabled={signing || declining}
+                className="w-full sm:w-auto"
+              >
                 {signing ? "Signing..." : "Sign Transaction"}
               </Button>
               <Button
                 variant="outline"
                 onClick={() => setShowDeclineForm(!showDeclineForm)}
                 disabled={signing || declining}
+                className="w-full sm:w-auto"
               >
                 Decline
               </Button>
@@ -852,7 +863,11 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
             {submitError && (
               <p className="text-sm text-destructive">{submitError}</p>
             )}
-            <Button onClick={handleSubmit} disabled={submitting}>
+            <Button
+              onClick={handleSubmit}
+              disabled={submitting}
+              className="w-full sm:w-auto"
+            >
               {submitting ? "Submitting..." : "Submit Transaction"}
             </Button>
           </CardContent>
@@ -864,7 +879,7 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
         (isSigner || isAdmin) &&
         (proposal.status === "pending" || proposal.status === "ready") && (
           <Card>
-            <CardContent className="pt-6 flex items-center justify-between">
+            <CardContent className="flex flex-col gap-3 pt-6 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm text-muted-foreground">
                 {isSigner
                   ? "Any signer can cancel this proposal."
@@ -875,6 +890,7 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
                 size="sm"
                 onClick={handleCancel}
                 disabled={cancelling}
+                className="w-full shrink-0 sm:w-auto"
               >
                 {cancelling ? "Cancelling..." : "Cancel Proposal"}
               </Button>
@@ -894,9 +910,10 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
       )}
 
       {/* Navigation */}
-      <div className="flex gap-3 pt-2">
+      <div className="flex flex-col gap-2 pt-2 sm:flex-row sm:gap-3">
         <Button
           variant="outline"
+          className="w-full sm:w-auto"
           onClick={() =>
             (window.location.href = `/multisig/${proposal.multisig.address}?network=${proposal.multisig.network}`)
           }
@@ -904,6 +921,7 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
           Back to Dashboard
         </Button>
         <Button
+          className="w-full sm:w-auto"
           onClick={() =>
             (window.location.href = `/multisig/${proposal.multisig.address}/propose?network=${proposal.multisig.network}`)
           }

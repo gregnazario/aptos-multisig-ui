@@ -260,9 +260,9 @@ export function UrlProposalView() {
       {/* Header */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="text-lg">Proposal</CardTitle>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Badge variant="outline">URL mode</Badge>
               <Badge variant="outline">{data.net}</Badge>
               {isExpired ? (
@@ -280,7 +280,7 @@ export function UrlProposalView() {
               )}
             </div>
           </div>
-          <CardDescription>{data.desc}</CardDescription>
+          <CardDescription className="break-words">{data.desc}</CardDescription>
         </CardHeader>
       </Card>
 
@@ -305,15 +305,15 @@ export function UrlProposalView() {
           )}
           <div>
             <span className="font-medium">Function: </span>
-            <code className="text-xs">{data.fn}</code>
+            <code className="break-all text-xs">{data.fn}</code>
           </div>
           {data.args && data.args.length > 0 && (
             <div>
               <span className="font-medium">Arguments: </span>
-              <code className="text-xs">{data.args.join(", ")}</code>
+              <code className="break-all text-xs">{data.args.join(", ")}</code>
             </div>
           )}
-          <div className="grid grid-cols-3 gap-4 text-xs">
+          <div className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-3 sm:gap-4">
             <div>
               <span className="text-muted-foreground">Seq #: </span>
               {data.seq}
@@ -377,8 +377,12 @@ export function UrlProposalView() {
       {/* Sign action */}
       {canSign && (
         <Card>
-          <CardContent className="pt-6 space-y-3">
-            <Button onClick={handleSign} disabled={signing}>
+          <CardContent className="space-y-3 pt-6">
+            <Button
+              onClick={handleSign}
+              disabled={signing}
+              className="w-full sm:w-auto"
+            >
               {signing ? "Signing..." : "Sign Transaction"}
             </Button>
           </CardContent>
@@ -396,13 +400,17 @@ export function UrlProposalView() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="flex gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row">
               <Input
                 value={updatedUrl}
                 readOnly
-                className="font-mono text-xs"
+                className="min-w-0 flex-1 font-mono text-xs"
               />
-              <Button variant="outline" onClick={copyUrl}>
+              <Button
+                variant="outline"
+                onClick={copyUrl}
+                className="w-full shrink-0 sm:w-auto"
+              >
                 {copiedUrl ? "Copied!" : "Copy"}
               </Button>
             </div>
@@ -424,7 +432,11 @@ export function UrlProposalView() {
             {submitResult?.error && (
               <p className="text-sm text-destructive">{submitResult.error}</p>
             )}
-            <Button onClick={handleSubmit} disabled={submitting}>
+            <Button
+              onClick={handleSubmit}
+              disabled={submitting}
+              className="w-full sm:w-auto"
+            >
               {submitting ? "Submitting..." : "Submit Transaction"}
             </Button>
           </CardContent>
@@ -474,7 +486,11 @@ export function UrlProposalView() {
       )}
 
       <div className="pt-2">
-        <Button variant="outline" onClick={() => (window.location.href = "/")}>
+        <Button
+          variant="outline"
+          className="w-full sm:w-auto"
+          onClick={() => (window.location.href = "/")}
+        >
           Back to Home
         </Button>
       </div>

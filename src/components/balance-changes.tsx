@@ -98,18 +98,18 @@ export function BalanceChanges({
           return (
             <div
               key={`${c.address}-${c.asset}-${i}`}
-              className="flex items-center justify-between gap-3 px-3 py-2 text-xs"
+              className="flex flex-col gap-1.5 px-3 py-2 text-xs sm:flex-row sm:items-center sm:justify-between sm:gap-3"
             >
-              <div className="flex items-center gap-2 min-w-0">
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
                 <Badge
                   variant="outline"
-                  className="text-[10px] shrink-0"
+                  className="shrink-0 text-[10px]"
                   title={c.kind === "fa" ? "Fungible Asset" : "Coin"}
                 >
                   {c.kind === "fa" ? "FA" : "Coin"}
                 </Badge>
                 <code
-                  className="font-mono truncate text-muted-foreground"
+                  className="truncate font-mono text-muted-foreground"
                   title={c.address}
                 >
                   {shortAddr(c.address)}
@@ -117,14 +117,14 @@ export function BalanceChanges({
                 {isMultisig && (
                   <Badge
                     variant="secondary"
-                    className="text-[10px] shrink-0"
+                    className="shrink-0 text-[10px]"
                     title="This multisig account"
                   >
                     this multisig
                   </Badge>
                 )}
               </div>
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex shrink-0 items-center gap-2">
                 <span
                   className={
                     "font-mono font-medium tabular-nums " +
@@ -135,7 +135,7 @@ export function BalanceChanges({
                   {display}
                 </span>
                 <code
-                  className="text-muted-foreground font-mono"
+                  className="font-mono text-muted-foreground"
                   title={c.assetName ?? c.asset}
                 >
                   {symbolOrFallback}

@@ -112,7 +112,7 @@ function LookupImporter() {
     <div className="space-y-6">
       <div className="space-y-2">
         <Label htmlFor="lookupAddress">Multisig Address</Label>
-        <div className="flex gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row">
           <Input
             id="lookupAddress"
             placeholder="0x..."
@@ -122,9 +122,13 @@ function LookupImporter() {
               setLookupResult(null);
             }}
             onKeyDown={(e) => e.key === "Enter" && handleLookup()}
-            className="font-mono text-xs"
+            className="min-w-0 flex-1 font-mono text-xs"
           />
-          <Button onClick={handleLookup} disabled={loading || !address.trim()}>
+          <Button
+            onClick={handleLookup}
+            disabled={loading || !address.trim()}
+            className="w-full shrink-0 sm:w-auto"
+          >
             {loading ? "Looking up..." : "Lookup"}
           </Button>
         </div>
@@ -456,13 +460,18 @@ function ManualImporter() {
         </span>
       </label>
 
-      <div className="flex gap-4">
-        <Button variant="outline" onClick={validate}>
+      <div className="flex flex-col gap-2 sm:flex-row sm:gap-4">
+        <Button
+          variant="outline"
+          onClick={validate}
+          className="w-full sm:w-auto"
+        >
           Validate
         </Button>
         <Button
           onClick={importMultisig}
           disabled={!validated || loading || (!skipVerification && !connected)}
+          className="w-full sm:w-auto"
           title={
             !skipVerification && !connected
               ? "Connect a signer wallet to import"

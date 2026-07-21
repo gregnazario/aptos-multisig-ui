@@ -18,8 +18,8 @@ export function ConnectWalletButton() {
   // Connected with key error
   if (adapter.connected && keyError) {
     return (
-      <div className="flex items-center gap-2">
-        <span className="text-xs text-destructive max-w-48 leading-tight">
+      <div className="flex max-w-full items-center gap-2">
+        <span className="max-w-28 text-xs leading-tight text-destructive sm:max-w-48">
           Non-Ed25519 key detected
         </span>
         <Button
@@ -36,15 +36,21 @@ export function ConnectWalletButton() {
   // Connected via standard adapter
   if (adapter.connected && address) {
     return (
-      <Button variant="outline" onClick={() => adapter.disconnect()}>
-        {address.slice(0, 6)}...{address.slice(-4)}
+      <Button variant="outline" size="sm" onClick={() => adapter.disconnect()}>
+        <span className="font-mono text-xs sm:text-sm">
+          {address.slice(0, 6)}...{address.slice(-4)}
+        </span>
       </Button>
     );
   }
 
   // Not connected — show wallet options
   if (!adapter.wallets) {
-    return <Button disabled>Loading...</Button>;
+    return (
+      <Button disabled size="sm">
+        Loading...
+      </Button>
+    );
   }
 
   // Filter out keyless/social login wallets — they use non-Ed25519 keys
@@ -63,8 +69,9 @@ export function ConnectWalletButton() {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger render={<Button />}>
-        Connect Wallet
+      <DropdownMenuTrigger render={<Button size="sm" />}>
+        <span className="sm:hidden">Connect</span>
+        <span className="hidden sm:inline">Connect Wallet</span>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         {availableWallets.map((w) => (

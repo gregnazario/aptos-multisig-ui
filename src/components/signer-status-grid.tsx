@@ -46,13 +46,15 @@ export function SignerStatusGrid({
           return (
             <div
               key={key}
-              className="flex items-center justify-between gap-2 text-sm"
+              className="flex flex-wrap items-center justify-between gap-2 text-sm"
             >
-              <div className="flex items-center gap-2">
-                <span className="text-muted-foreground w-6 text-right">
+              <div className="flex min-w-0 items-center gap-2">
+                <span className="w-6 shrink-0 text-right text-muted-foreground">
                   {index}
                 </span>
-                <code className="text-xs">{truncateKey(key)}</code>
+                <code className="truncate text-xs" title={key}>
+                  {truncateKey(key)}
+                </code>
               </div>
               {status === "signed" ? (
                 <Badge className="bg-green-600 text-white">Signed</Badge>
