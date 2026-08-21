@@ -12,7 +12,7 @@ Follow the sections **in order**. Later steps depend on earlier tools.
 |---|------|------------------|
 | 1 | System packages (`curl`, `git`, `ca-certificates`, `build-essential`, `python3`) | Clone the repo; compile native Node addons (`better-sqlite3`) |
 | 2 | Node.js **24+** | Runtime for Next.js and tooling (`engines.node`) |
-| 3 | pnpm **11.13.0+** | Package manager (`packageManager` / `engines.pnpm`) |
+| 3 | pnpm **11.22.0+** | Package manager (`packageManager` / `engines.pnpm`) |
 | 4 | Repository clone | Application source |
 | 5 | App dependencies + SQLite schema | `pnpm install`, rebuild `better-sqlite3`, `drizzle-kit push` |
 | 6 | **(Production)** pm2 | Keep `pnpm start` running across logouts/reboots |
@@ -75,32 +75,32 @@ If you prefer version managers:
 curl https://mise.run | sh
 # restart the shell or follow the installer’s PATH instructions
 cd /path/to/aptos-multisig-ui   # after cloning (step 4)
-mise install                    # installs node=24 and pnpm=11.13.0 from mise.toml
+mise install                    # installs node=24 and pnpm=11.22.0 from mise.toml
 ```
 
 If you use `mise install`, you can skip the separate pnpm install in step 3.
 
 ---
 
-## 3. pnpm 11.13.0+
+## 3. pnpm 11.22.0+
 
 Skip this step if you already ran `mise install` (step 2 alternative).
 
 ```bash
 sudo corepack enable
-sudo corepack prepare pnpm@11.13.0 --activate
+sudo corepack prepare pnpm@11.22.0 --activate
 ```
 
 Or:
 
 ```bash
-npm install -g pnpm@11.13.0
+npm install -g pnpm@11.22.0
 ```
 
 Verify:
 
 ```bash
-pnpm -v   # must be 11.x (11.13.0 or newer)
+pnpm -v   # must be 11.x (11.22.0 or newer)
 ```
 
 ---
@@ -263,7 +263,7 @@ sudo apt-get install -y nodejs
 
 # 3. pnpm
 sudo corepack enable
-sudo corepack prepare pnpm@11.13.0 --activate
+sudo corepack prepare pnpm@11.22.0 --activate
 
 # 4. Clone
 git clone https://github.com/gregnazario/aptos-multisig-ui.git
