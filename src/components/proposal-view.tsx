@@ -184,12 +184,11 @@ export function ProposalView({ proposalId }: ProposalViewProps) {
   // Only `proposal?.status` gates the effect; depending on `proposal` too
   // would restart polling on every unrelated refetch (new object identity
   // on each fetch).
-  // biome-ignore lint/correctness/useExhaustiveDependencies: intentionally narrow on `proposal?.status`; depending on `proposal` would restart polling on every unrelated refetch.
   useEffect(() => {
     pollTimers.current.forEach(clearTimeout);
     pollTimers.current = [];
 
-    if (!proposal || proposal.status !== "submitted") return;
+    if (proposal?.status !== "submitted") return;
 
     const checkStatus = async () => {
       try {
