@@ -52,11 +52,19 @@ jobs:
           # If a previous run pushed the tag and then failed to create the
           # GitHub Release, later main SHAs must not treat that as a hard
           # error (that would fail every subsequent push). Finish the release
-          # from the existing tag instead of moving it.
+          # from the existing tag instead of moving it. Only do that when the
+          # tagged commit is an ancestor of this run; a tag off main's history
+          # is refused.
+          FINISH_NOTES=""
           if git rev-parse "refs/tags/${TAG}" >/dev/null 2>&1; then
             EXISTING="$(git rev-parse "refs/tags/${TAG}^{commit}")"
             if [ "$EXISTING" != "$GITHUB_SHA" ]; then
-              echo "Tag $TAG already points at $EXISTING (not $GITHUB_SHA); creating the GitHub release from the existing tag."
+              if ! git merge-base --is-ancestor "$EXISTING" "$GITHUB_SHA"; then
+                echo "::error::Tag $TAG points at $EXISTING, which is not an ancestor of $GITHUB_SHA; refusing to create the release."
+                exit 1
+              fi
+              echo "::warning::Tag $TAG already points at $EXISTING (not $GITHUB_SHA); finishing the GitHub release from the existing tag."
+              FINISH_NOTES="Finishing an interrupted publish: tag ${TAG} is ${EXISTING}. This workflow run was ${GITHUB_SHA}."
             fi
           else
             git tag "$TAG" "$GITHUB_SHA"
@@ -64,13 +72,12 @@ jobs:
           fi
 
           PREV="$(git tag --list 'v*' --sort=-v:refname | awk -v tag="$TAG" '$0 != tag { print; exit }')"
-          NOTES_ARGS=()
+          CREATE_ARGS=(--title "$TAG" --generate-notes --latest)
+          if [ -n "$FINISH_NOTES" ]; then
+            CREATE_ARGS+=(--notes "$FINISH_NOTES")
+          fi
           if [ -n "${PREV}" ]; then
-            NOTES_ARGS+=(--notes-start-tag "${PREV}")
+            CREATE_ARGS+=(--notes-start-tag "${PREV}")
           fi
 
-          gh release create "$TAG" \
-            --title "$TAG" \
-            --generate-notes \
-            --latest \
-            "${NOTES_ARGS[@]}"
+          gh release create "$TAG" "${CREATE_ARGS[@]}"
