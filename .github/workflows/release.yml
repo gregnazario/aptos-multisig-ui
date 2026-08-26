@@ -48,11 +48,15 @@ jobs:
           # Push the git tag first. Creating a release with --target on a SHA
           # that adds/changes .github/workflows requires workflows:write, which
           # GITHUB_TOKEN cannot have. An existing tag skips that API check.
+          #
+          # If a previous run pushed the tag and then failed to create the
+          # GitHub Release, later main SHAs must not treat that as a hard
+          # error (that would fail every subsequent push). Finish the release
+          # from the existing tag instead of moving it.
           if git rev-parse "refs/tags/${TAG}" >/dev/null 2>&1; then
             EXISTING="$(git rev-parse "refs/tags/${TAG}^{commit}")"
             if [ "$EXISTING" != "$GITHUB_SHA" ]; then
-              echo "Tag $TAG already points at $EXISTING, not $GITHUB_SHA"
-              exit 1
+              echo "Tag $TAG already points at $EXISTING (not $GITHUB_SHA); creating the GitHub release from the existing tag."
             fi
           else
             git tag "$TAG" "$GITHUB_SHA"
