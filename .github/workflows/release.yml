@@ -3,9 +3,6 @@ name: Release
 on:
   push:
     branches: [main]
-    paths:
-      - package.json
-      - .github/workflows/release.yml
   workflow_dispatch:
 
 permissions:
@@ -33,11 +30,29 @@ jobs:
         run: |
           set -euo pipefail
           VERSION="$(node -p "require('./package.json').version")"
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "package.json version must be x.y.z, got: ${VERSION}"
+            exit 1
+          fi
           TAG="v${VERSION}"
 
           if gh release view "$TAG" >/dev/null 2>&1; then
             echo "Release $TAG already exists; skipping."
             exit 0
+          fi
+
+          # Push the git tag first. Creating a release with --target on a SHA
+          # that adds/changes .github/workflows requires workflows:write, which
+          # GITHUB_TOKEN cannot have. An existing tag skips that API check.
+          if git rev-parse "refs/tags/${TAG}" >/dev/null 2>&1; then
+            EXISTING="$(git rev-parse "refs/tags/${TAG}^{commit}")"
+            if [ "$EXISTING" != "$GITHUB_SHA" ]; then
+              echo "Tag $TAG already points at $EXISTING, not $GITHUB_SHA"
+              exit 1
+            fi
+          else
+            git tag "$TAG" "$GITHUB_SHA"
+            git push origin "refs/tags/${TAG}"
           fi
 
           PREV="$(git tag --list 'v*' --sort=-v:refname | awk -v tag="$TAG" '$0 != tag { print; exit }')"
@@ -50,5 +65,4 @@ jobs:
             --title "$TAG" \
             --generate-notes \
             --latest \
-            --target "${GITHUB_SHA}" \
             "${NOTES_ARGS[@]}"
