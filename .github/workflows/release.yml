@@ -41,6 +41,10 @@ jobs:
             exit 0
           fi
 
+          # Re-fetch tags so the local-ref guard and --notes-start-tag do not
+          # depend on checkout fetch-depth / fetch-tags staying enabled.
+          git fetch origin --tags --force
+
           # Push the git tag first. Creating a release with --target on a SHA
           # that adds/changes .github/workflows requires workflows:write, which
           # GITHUB_TOKEN cannot have. An existing tag skips that API check.
